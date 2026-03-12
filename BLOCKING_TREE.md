@@ -39,10 +39,17 @@ T11: Ledger Integration (real) ──── depends on T8
 ### Wave 3 (depends on Waves 1+2)
 - **T5**: Re-send from History (needs T4)
 - **T6**: Uniswap Swaps + Fee (needs T1 for token selection)
+- **T11b**: Ledger Transaction Signing + Address Selector (needs T11)
 - ~~**T7**: Chain Abstraction (needs T1 + T3)~~ **⏸️ PAUSED**
 
-### Wave 4 (deferred)
-- **T10**: ENS Subdomains
+### Wave 4 — UI Validation (final phase before Done)
+- **T12**: Playwright E2E Test Suite — all critical user flows
+- **T13**: UI Polish Pass — automated visual regression + consistency audit
+- **T14**: Human QA — manual testing on real devices → bug fix cycle → sign off
+
+### Paused / Deferred
+- ~~**T7**: Chain Abstraction~~ ⏸️
+- ~~**T10**: ENS Subdomains~~ ⏸️
 
 ---
 
@@ -320,7 +327,80 @@ T11: Ledger Integration (real) ──── depends on T8
 
 ---
 
-### T10: ENS Subdomains (DEFERRED — Phase 4)
+### T11b: Ledger Transaction Signing + Address Selector
+
+**Context:** After swapOwner, the Safe's signer is a Ledger address. But the send flow still calls `signWithPasskey()` which fails. The entire transaction signing flow must detect the signer type and route accordingly. Also, users with multiple Ethereum addresses on their Ledger need to choose which one to use.
+
+**Files to modify:**
+- `src/lib/ledger.ts` — Add `getMultipleAddresses(count: number)` that derives addresses from paths m/44'/60'/0'/0/0 through m/44'/60'/0'/0/N. Add `signSafeTransaction()` that signs a Safe tx hash with the Ledger.
+- `src/lib/storage.ts` — Add `signerType` field to `SavedOwner`: `'passkey' | 'ledger'`. Store the derivation path used.
+- `src/components/WalletDashboard.tsx` — In send flow, detect signer type. If Ledger: prompt user to connect device and sign on it (instead of Passkey biometric).
+- `src/components/SignerSwitch.tsx` — Replace hardcoded single address with address selector (show first 5 addresses with ETH balances, user picks one).
+- `src/components/ApproveTransaction.tsx` — Support Ledger signing for multi-sig approval flow.
+
+**Acceptance Criteria:**
+- [ ] After switching to Ledger, user can send ETH/tokens by signing on the Ledger device
+- [ ] Address selector shows first 5 derived addresses with balances
+- [ ] User can select which Ledger address to use as signer
+- [ ] Signer type persisted in localStorage — app remembers it's a Ledger signer
+- [ ] Clear UX: "Connect your Ledger and confirm on device" prompts
+- [ ] Multi-sig approval also works with Ledger signing
+- [ ] No feature is half-implemented — if you can switch to Ledger, you can USE Ledger
+
+**Dependencies:** T11
+
+---
+
+### T12: Playwright E2E Test Suite
+
+**Context:** Final validation phase. Automated tests for all critical user flows.
+
+**Files to create:**
+- `playwright.config.ts` — Playwright config (mobile viewport, baseURL)
+- `e2e/wallet-create.spec.ts` — Test wallet creation flow
+- `e2e/send-tokens.spec.ts` — Test sending ETH and ERC-20s
+- `e2e/history.spec.ts` — Test transaction history renders
+- `e2e/settings.spec.ts` — Test settings, owner display, threshold
+- `e2e/signer-flow.spec.ts` — Test add signer invite flow
+
+**Acceptance Criteria:**
+- [ ] All critical flows have at least one happy-path test
+- [ ] Tests run in CI (GitHub Actions)
+- [ ] Mobile viewport (375px) used for all tests
+- [ ] Console error detection — tests fail if console.error fires
+- [ ] Screenshot comparison for visual regression
+
+**Dependencies:** All feature tasks complete
+
+---
+
+### T13: UI Polish Pass
+
+**Context:** Automated + manual review of every screen for consistency, edge cases, and polish.
+
+**Acceptance Criteria:**
+- [ ] Every screen has proper loading, empty, and error states
+- [ ] Design system is consistent (colors, spacing, typography, border-radius)
+- [ ] All interactive elements have hover/active/disabled states
+- [ ] No orphaned UI text (everything meaningful)
+- [ ] Responsive from 320px to 428px (iPhone SE to iPhone Pro Max)
+
+---
+
+### T14: Human QA + Sign-off
+
+**Context:** Manual testing by Augusto and team on real devices before declaring Done.
+
+**Acceptance Criteria:**
+- [ ] Tested on iPhone Safari
+- [ ] Tested on Android Chrome
+- [ ] Tested with real Ledger device
+- [ ] Bug list created, fixed, and re-tested
+- [ ] Final sign-off from Augusto
+
+---
+
+### T10: ENS Subdomains (DEFERRED)
 
 Deferred. Requires ENS parent domain registration and CCIP-Read resolver setup.
 
