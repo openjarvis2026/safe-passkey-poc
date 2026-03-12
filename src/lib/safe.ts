@@ -188,3 +188,28 @@ export function encodeAddOwnerWithThreshold(
     args: [owner, threshold],
   });
 }
+
+// ERC-20 transfer function encoding
+const ERC20_TRANSFER_ABI = [
+  {
+    name: 'transfer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const;
+
+export function encodeERC20Transfer(
+  to: `0x${string}`,
+  amount: bigint
+): Hex {
+  return encodeFunctionData({
+    abi: ERC20_TRANSFER_ABI,
+    functionName: 'transfer',
+    args: [to, amount],
+  });
+}

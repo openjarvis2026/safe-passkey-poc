@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { formatEther, parseEther, parseAbiItem } from 'viem';
+import { formatEther, parseEther, parseAbiItem, parseUnits } from 'viem';
 import QRCode from 'qrcode';
 import { publicClient, EXPLORER } from '../lib/relayer';
 import SlideToConfirm from './shared/SlideToConfirm';
-import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold } from '../lib/safe';
+import TokenList from './TokenList';
+import TokenSelector from './TokenSelector';
+import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { type SavedSafe, saveSafe, clearSafe, base64ToArrayBuffer } from '../lib/storage';
@@ -12,6 +14,7 @@ import {
   encodeShareableTransaction,
   packSingleSignerData,
 } from '../lib/multisig';
+import { NATIVE_TOKEN, type Token } from '../lib/tokens';
 
 type View = 'home' | 'send' | 'receive' | 'add-owner';
 
@@ -49,6 +52,8 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
   const [sendStatus, setSendStatus] = useState('');
   const [txHash, setTxHash] = useState('');
   const [shareUrl, setShareUrl] = useState('');
+  const [selectedToken, setSelectedToken] = useState<Token>(NATIVE_TOKEN);
+  const [showTokenSelector, setShowTokenSelector] = useState(false);
   const shareQrRef = useRef<HTMLCanvasElement>(null);
 
   // Receive
@@ -120,14 +125,30 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
   }, [shareUrl]);
 
   const handleSend = async () => {
-    if (!localCredentialId || !localOwner || !sendTo || !sendAmount) return;
+    if (!localCredentialId || !localOwner || !sendTo || !sendAmount || !selectedToken) return;
     setSendStatus('Signing…');
     setTxHash('');
     setShareUrl('');
     try {
-      const to = sendTo as `0x${string}`;
-      const value = parseEther(sendAmount);
-      const data = '0x' as `0x${string}`;
+      const recipientAddress = sendTo as `0x${string}`;
+      let to: `0x${string}`;
+      let value: bigint;
+      let data: `0x${string}`;
+
+      // Determine transaction parameters based on token type
+      if (selectedToken.address === '0x0000000000000000000000000000000000000000') {
+        // Native ETH transfer
+        to = recipientAddress;
+        value = parseUnits(sendAmount, selectedToken.decimals);
+        data = '0x';
+      } else {
+        // ERC-20 token transfer
+        to = selectedToken.address;
+        value = 0n;
+        const tokenAmount = parseUnits(sendAmount, selectedToken.decimals);
+        data = encodeERC20Transfer(recipientAddress, tokenAmount);
+      }
+
       const nonce = await getNonce(safe.address);
       const safeTxHash = computeSafeTxHash(safe.address, to, value, data, nonce);
       const hashBytes = new Uint8Array(32);
@@ -240,6 +261,9 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
         </button>
       </div>
 
+      {/* Token List */}
+      <TokenList safeAddress={safe.address} />
+
       {/* Owners */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -324,13 +348,44 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
   if (view === 'send') return (
     <div className="fade-in stack-lg">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="btn btn-icon" style={{ width: 44, height: 44, fontSize: 20 }} onClick={() => { setView('home'); setSendStatus(''); setTxHash(''); setShareUrl(''); }}>←</button>
+        <button className="btn btn-icon" style={{ width: 44, height: 44, fontSize: 20 }} onClick={() => { 
+          setView('home'); 
+          setSendStatus(''); 
+          setTxHash(''); 
+          setShareUrl('');
+          setSendTo('');
+          setSendAmount('');
+          setSelectedToken(NATIVE_TOKEN);
+        }}>←</button>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>Send</h2>
       </div>
 
       <div className="stack">
         <input className="input" placeholder="Recipient address (0x…)" value={sendTo} onChange={e => setSendTo(e.target.value)} />
-        <input className="input" placeholder="Amount (ETH)" value={sendAmount} onChange={e => setSendAmount(e.target.value)} inputMode="decimal" />
+        
+        <div className="send-token-input">
+          <button 
+            className="send-token-selector"
+            onClick={() => setShowTokenSelector(true)}
+          >
+            <span style={{ fontSize: 18 }}>
+              {selectedToken.symbol === 'ETH' && '⚡'}
+              {selectedToken.symbol === 'USDC' && '💙'}
+              {selectedToken.symbol === 'USDT' && '💚'}
+              {selectedToken.symbol === 'WETH' && '🔷'}
+            </span>
+            <span>{selectedToken.symbol}</span>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>▼</span>
+          </button>
+          
+          <input 
+            className="send-amount-input"
+            placeholder={`Amount (${selectedToken.symbol})`}
+            value={sendAmount}
+            onChange={e => setSendAmount(e.target.value)}
+            inputMode="decimal"
+          />
+        </div>
       </div>
 
       {threshold <= 1 ? (
@@ -363,6 +418,16 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Token Selector Modal */}
+      {showTokenSelector && (
+        <TokenSelector
+          safeAddress={safe.address}
+          selectedToken={selectedToken}
+          onSelect={setSelectedToken}
+          onClose={() => setShowTokenSelector(false)}
+        />
       )}
     </div>
   );
