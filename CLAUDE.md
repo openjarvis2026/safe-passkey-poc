@@ -144,6 +144,51 @@ VITE_RELAYER_PRIVATE_KEY=0x...  # Relayer EOA private key (Base Sepolia funded)
 2. Parse it in `parseRoute()`
 3. Handle it in `App.tsx`'s render logic
 
+## 🎨 Design System Rules
+
+The app uses a Rainbow-style wallet design. ALL new UI must follow these rules:
+
+### Card Layout
+- Use `className="card"` or `className="card-glass"` for content containers
+- Inside cards, use proper spacing: `padding: 16px`, `gap: 12px`
+- Never stack raw text — always use structured layouts with flex/grid
+
+### Typography Hierarchy
+- Page title: `fontSize: 20, fontWeight: 700`
+- Card title: `fontSize: 16, fontWeight: 600`
+- Body text: `fontSize: 14`
+- Muted/secondary: `className="text-muted"` or `fontSize: 13, color: var(--text-secondary)`
+- Monospace (addresses/hashes): `fontFamily: monospace, fontSize: 13`
+
+### Transaction/List Items Pattern
+Every list item (transactions, tokens, owners) must follow this layout:
+```
+┌──────────────────────────────────┐
+│ [Icon]  Title           [Value] │
+│         Subtitle        [Sub]   │
+└──────────────────────────────────┘
+```
+Use flexbox with `alignItems: center`, icon on left (40x40 circle), info in middle (flex:1), values on right.
+
+### Buttons
+- Primary: `className="btn btn-primary"` — gradient background, white text
+- Secondary: `className="btn btn-secondary"`
+- Ghost: `className="btn btn-ghost"`
+- Never use emojis in buttons as the primary visual (use proper text)
+
+### Status States
+- Loading: spinner + descriptive text (never just a spinner)
+- Error: red card with `⚠️` icon and message
+- Empty: centered text with muted color, helpful message
+- Success: green card with checkmark
+
+### Step-by-Step Flows
+For multi-step processes, use a vertical stepper:
+- Each step is a card
+- States: pending (grey border), active (blue border + spinner), done (green border + ✅)
+- Show step number + title + description
+- Active step shows what the user needs to do
+
 ## 🧪 Visual Verification
 
 After implementing changes, you MUST visually verify your work:
