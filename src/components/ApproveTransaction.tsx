@@ -13,6 +13,7 @@ import {
   packSingleSignerData,
   packFromShareable,
 } from '../lib/multisig';
+import SlideToConfirm from './shared/SlideToConfirm';
 
 interface Props { encodedData: string; }
 
@@ -167,7 +168,40 @@ export default function ApproveTransaction({ encodedData }: Props) {
       </div>
 
       {/* Actions */}
-      {isOwner && !alreadySigned && !thresholdMet && (
+      {isOwner && !alreadySigned && !thresholdMet && sigCount + 1 >= tx.threshold && !txResult && (
+        <SlideToConfirm
+          label="Slide to approve & execute"
+          onConfirm={async () => {
+            if (!localCredentialId || !localOwner || !tx) return;
+            const safeTxHash = computeSafeTxHash(
+              tx.safe as `0x${string}`, tx.to as `0x${string}`,
+              BigInt(tx.value), tx.data as `0x${string}`, BigInt(tx.nonce)
+            );
+            const hashBytes = new Uint8Array(32);
+            for (let i = 0; i < 32; i++) hashBytes[i] = parseInt(safeTxHash.slice(2 + i * 2, 4 + i * 2), 16);
+
+            const sig = await signWithPasskey(localCredentialId, hashBytes);
+            const clientDataFields = extractClientDataFields(sig.clientDataJSON, sig.challengeOffset);
+            const sigData = packSingleSignerData(sig.authenticatorData, clientDataFields, sig.r, sig.s);
+
+            const updatedTx: ShareableTransaction = {
+              ...tx,
+              signatures: [...tx.signatures, { signer: localOwner.address, data: sigData }],
+            };
+            setTx(updatedTx);
+
+            const packed = packFromShareable(updatedTx.signatures);
+            const hash = await execTransaction(
+              tx.safe as `0x${string}`, tx.to as `0x${string}`,
+              BigInt(tx.value), tx.data as `0x${string}`, packed
+            );
+            setTxResult(hash);
+            setStatus('Transaction executed ✅');
+          }}
+        />
+      )}
+
+      {isOwner && !alreadySigned && !thresholdMet && sigCount + 1 < tx.threshold && (
         <button className="btn btn-primary" onClick={handleSign} disabled={status === 'Signing…'}>
           {status === 'Signing…' ? <><div className="spinner" /> Signing…</> : 'Approve'}
         </button>

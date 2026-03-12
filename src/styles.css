@@ -214,6 +214,40 @@ body {
 .badge-success { background: var(--success-light); color: #065F46; }
 
 /* ---- Select ---- */
+/* ---- Slide to Confirm ---- */
+.slide-track {
+  transition: background 0.3s;
+}
+.slide-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.slide-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.4) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* ---- Transaction History ---- */
+.tx-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tx-history-item:last-child {
+  border-bottom: none;
+}
+
+/* ---- Select ---- */
 .select {
   padding: 10px 14px;
   border: 1.5px solid var(--border);
