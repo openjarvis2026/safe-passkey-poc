@@ -4,7 +4,8 @@ export type Route =
   | { page: 'home' }
   | { page: 'join'; safeAddress: `0x${string}` }
   | { page: 'sign'; data: string }
-  | { page: 'settings' };
+  | { page: 'settings' }
+  | { page: 'invite'; safeAddress: `0x${string}` };
 
 export function parseRoute(): Route {
   const hash = window.location.hash;
@@ -27,6 +28,14 @@ export function parseRoute(): Route {
 
   if (hash === '#/settings') {
     return { page: 'settings' };
+  }
+
+  if (hash.startsWith('#/invite')) {
+    const params = new URLSearchParams(hash.split('?')[1] || '');
+    const safe = params.get('safe');
+    if (safe && safe.startsWith('0x')) {
+      return { page: 'invite', safeAddress: safe as `0x${string}` };
+    }
   }
 
   return { page: 'home' };

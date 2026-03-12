@@ -62,10 +62,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   // Receive
   const receiveQrRef = useRef<HTMLCanvasElement>(null);
 
-  // Add owner
-  const [newOwnerAddr, setNewOwnerAddr] = useState('');
-  const [newThreshold, setNewThreshold] = useState(2);
-  const [addStatus, setAddStatus] = useState('');
+  // Removed add owner state - now using InviteSigner component
 
   // Transaction history
   const [txHistory, setTxHistory] = useState<Array<{ hash: string; timestamp: number; value: bigint }>>([]);
@@ -184,54 +181,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
     }
   };
 
-  const handleAddOwner = async () => {
-    if (!localCredentialId || !localOwner || !newOwnerAddr) return;
-    setAddStatus('Adding owner…');
-    try {
-      const ownerAddr = newOwnerAddr as `0x${string}`;
-      const addOwnerData = encodeAddOwnerWithThreshold(ownerAddr, BigInt(newThreshold));
-      const nonce = await getNonce(safe.address);
-      const safeTxHash = computeSafeTxHash(safe.address, safe.address, 0n, addOwnerData, nonce);
-      const hashBytes = new Uint8Array(32);
-      for (let i = 0; i < 32; i++) hashBytes[i] = parseInt(safeTxHash.slice(2 + i * 2, 4 + i * 2), 16);
-
-      const sig = await signWithPasskey(localCredentialId, hashBytes);
-      const clientDataFields = extractClientDataFields(sig.clientDataJSON, sig.challengeOffset);
-
-      if (threshold <= 1) {
-        setAddStatus('Executing…');
-        const packed = packSafeSignature(localOwner.address, sig.authenticatorData, sig.clientDataJSON, sig.challengeOffset, sig.r, sig.s);
-        await execTransaction(safe.address, safe.address, 0n, addOwnerData, packed);
-        const newOwners = await getOwners(safe.address);
-        const newT = await getThreshold(safe.address);
-        const updatedSafe: SavedSafe = {
-          ...safe, threshold: Number(newT),
-          owners: safe.owners.concat(
-            newOwners.filter(o => !safe.owners.some(so => so.address.toLowerCase() === o.toLowerCase()))
-              .map(o => ({ address: o, publicKey: { x: '', y: '' }, label: `Device ${o.slice(0, 8)}` }))
-          ),
-        };
-        saveSafe(updatedSafe);
-        setThreshold(Number(newT));
-        setAddStatus('Owner added ✅');
-        setNewOwnerAddr('');
-      } else {
-        const sigData = packSingleSignerData(sig.authenticatorData, clientDataFields, sig.r, sig.s);
-        const shareable: ShareableTransaction = {
-          safe: safe.address, to: safe.address, value: '0', data: addOwnerData, nonce: nonce.toString(),
-          chainId: safe.chainId,
-          signatures: [{ signer: localOwner.address, data: sigData }],
-          threshold,
-        };
-        const encoded = encodeShareableTransaction(shareable);
-        const url = `${window.location.origin}${window.location.pathname}#/sign?data=${encoded}`;
-        setShareUrl(url);
-        setAddStatus(`Signed (1/${threshold}). Share with other devices.`);
-      }
-    } catch (e: any) {
-      setAddStatus(`Error: ${e.message}`);
-    }
-  };
+  // handleAddOwner removed - now using InviteSigner component
 
   const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
   const share = (url: string) => navigator.share?.({ url }).catch(() => {});
@@ -301,8 +251,8 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
             );
           })}
         </div>
-        <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => setView('add-owner')}>
-          + Add Device
+        <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => window.location.hash = `#/invite?safe=${safe.address}`}>
+          + Invite Signer
         </button>
       </div>
 
@@ -463,53 +413,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
     </div>
   );
 
-  // ── ADD OWNER VIEW ──
-  if (view === 'add-owner') return (
-    <div className="fade-in stack-lg">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="btn btn-icon" style={{ width: 44, height: 44, fontSize: 20 }} onClick={() => { setView('home'); setAddStatus(''); }}>←</button>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Add Device</h2>
-      </div>
-
-      <div className="card">
-        <p className="text-secondary text-sm mb-8">Paste the device address from the other device</p>
-        <div className="stack">
-          <input className="input" placeholder="0x… device address" value={newOwnerAddr} onChange={e => setNewOwnerAddr(e.target.value)} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <label className="text-secondary text-sm">New threshold:</label>
-            <select className="select" value={newThreshold} onChange={e => setNewThreshold(Number(e.target.value))}>
-              {Array.from({ length: (owners.length || safe.owners.length) + 1 }, (_, i) => i + 1).map(n => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <button className="btn btn-primary" onClick={handleAddOwner} disabled={!newOwnerAddr || addStatus === 'Adding owner…' || addStatus === 'Executing…'}>
-        {addStatus === 'Adding owner…' || addStatus === 'Executing…' ? <><div className="spinner" /> {addStatus}</> : 'Add Owner'}
-      </button>
-
-      {addStatus && addStatus !== 'Adding owner…' && addStatus !== 'Executing…' && (
-        <div className="card fade-in">
-          <p style={{ fontSize: 14 }}>{addStatus}</p>
-        </div>
-      )}
-
-      {shareUrl && (
-        <div className="card fade-in" style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Share for approval</p>
-          <canvas ref={shareQrRef} style={{ marginBottom: 12 }} />
-          <div className="row">
-            <button className="btn btn-secondary btn-sm flex-1" onClick={() => copy(shareUrl)}>📋 Copy</button>
-            {typeof navigator.share === 'function' && (
-              <button className="btn btn-primary btn-sm flex-1" onClick={() => share(shareUrl)}>📤 Share</button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  // Add-owner view removed - now using InviteSigner component
 
   // ── HISTORY VIEW ──
   if (view === 'history') return (

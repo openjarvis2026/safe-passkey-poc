@@ -158,6 +158,15 @@ export default function Settings({ safe, onBack }: Props) {
             );
           })}
         </div>
+        
+        <div style={{ marginTop: 16, display: 'flex', gap: 12 }}>
+          <button 
+            className="btn btn-primary btn-sm flex-1" 
+            onClick={() => window.location.hash = `#/invite?safe=${safe.address}`}
+          >
+            📧 Invite Signer
+          </button>
+        </div>
       </div>
 
       {/* Threshold Settings */}
