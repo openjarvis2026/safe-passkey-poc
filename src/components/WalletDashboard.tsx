@@ -6,6 +6,7 @@ import SlideToConfirm from './shared/SlideToConfirm';
 import TokenList from './TokenList';
 import TokenSelector from './TokenSelector';
 import SafeSelector from './SafeSelector';
+import TransactionHistory from './TransactionHistory';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
@@ -17,7 +18,7 @@ import {
 } from '../lib/multisig';
 import { NATIVE_TOKEN, type Token } from '../lib/tokens';
 
-type View = 'home' | 'send' | 'receive' | 'add-owner';
+type View = 'home' | 'send' | 'receive' | 'add-owner' | 'history';
 
 interface Props {
   safe: SavedSafe;
@@ -262,12 +263,15 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       </div>
 
       {/* Action Buttons */}
-      <div className="row">
+      <div className="action-buttons">
         <button className="btn btn-primary flex-1" onClick={() => setView('send')}>
           ↑ Send
         </button>
         <button className="btn btn-secondary flex-1" onClick={() => setView('receive')}>
           ↓ Receive
+        </button>
+        <button className="btn btn-secondary flex-1" onClick={() => setView('history')}>
+          📜 History
         </button>
       </div>
 
@@ -505,6 +509,14 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         </div>
       )}
     </div>
+  );
+
+  // ── HISTORY VIEW ──
+  if (view === 'history') return (
+    <TransactionHistory 
+      safeAddress={safe.address} 
+      onBack={() => setView('home')} 
+    />
   );
 
   return null;
