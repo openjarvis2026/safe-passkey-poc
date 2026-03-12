@@ -358,8 +358,16 @@ export async function fetchTransactionHistory(
       return [];
     }
 
+    // Deduplicate by txHash (all-transactions may already include some incoming transfers)
+    const seen = new Set<string>();
+    const deduplicated = transactions.filter(tx => {
+      if (seen.has(tx.txHash)) return false;
+      seen.add(tx.txHash);
+      return true;
+    });
+
     // Sort by timestamp (newest first)
-    return transactions.sort((a, b) => 
+    return deduplicated.sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 

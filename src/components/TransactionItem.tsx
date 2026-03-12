@@ -1,4 +1,3 @@
-import { formatUnits } from 'viem';
 import { 
   type SafeTransaction, 
   formatRelativeTime, 
@@ -65,82 +64,66 @@ export default function TransactionItem({ transaction }: Props) {
 
   return (
     <div className="card" style={{ padding: '16px', marginBottom: '8px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {/* Transaction type icon */}
         <div style={{
           width: '40px',
           height: '40px',
           borderRadius: '50%',
-          backgroundColor: iconColor,
+          background: type === 'receive' 
+            ? 'rgba(52, 199, 89, 0.15)' 
+            : type === 'send' 
+              ? 'rgba(255, 59, 48, 0.15)' 
+              : 'rgba(142, 142, 147, 0.15)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: '18px',
-          color: 'white',
-          flexShrink: 0
+          color: iconColor,
+          flexShrink: 0,
+          fontWeight: 700
         }}>
           {typeIcon}
         </div>
         
-        {/* Transaction details */}
+        {/* Middle: title + subtitle */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* First row: Title and Amount */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
-              {getTransactionTitle()}
-            </div>
-            {hasAmount && (
-              <div style={{ 
-                fontSize: '16px', 
-                fontWeight: 700, 
-                color: amountColor,
-                textAlign: 'right',
-                flexShrink: 0,
-                marginLeft: '8px'
-              }}>
-                {type === 'send' ? '-' : '+'}{formattedAmount} {token.symbol}
-              </div>
-            )}
+          <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {getTransactionTitle()}
           </div>
-          
-          {/* Second row: Timestamp and Status */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                {formatRelativeTime(timestamp)}
-              </span>
-              <a 
-                href={`${EXPLORER}/tx/${txHash}`} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="tx-hash-link"
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--primary-from)',
-                  textDecoration: 'none',
-                  fontFamily: 'monospace'
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {shortAddr(txHash)}
-              </a>
-            </div>
-            
-            {/* Status badge */}
-            <div style={{
-              padding: '4px 8px',
-              borderRadius: '12px',
-              fontSize: '12px',
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+              {formatRelativeTime(timestamp)}
+            </span>
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>·</span>
+            <span style={{
+              fontSize: '11px',
               fontWeight: 600,
-              backgroundColor: status === 'confirmed' ? 'var(--success)' : status === 'pending' ? '#F59E0B' : 'var(--danger)',
-              color: 'white'
+              padding: '1px 6px',
+              borderRadius: '6px',
+              backgroundColor: status === 'confirmed' ? 'rgba(52, 199, 89, 0.15)' : status === 'pending' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 59, 48, 0.15)',
+              color: status === 'confirmed' ? 'var(--success)' : status === 'pending' ? '#F59E0B' : 'var(--danger)'
             }}>
-              {status === 'confirmed' && '✅ Confirmed'}
-              {status === 'pending' && '⏳ Pending'}
-              {status === 'failed' && '❌ Failed'}
-            </div>
+              {status === 'confirmed' ? 'Confirmed' : status === 'pending' ? 'Pending' : 'Failed'}
+            </span>
           </div>
         </div>
+
+        {/* Right: amount */}
+        {hasAmount && (
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ 
+              fontSize: '15px', 
+              fontWeight: 700, 
+              color: amountColor
+            }}>
+              {type === 'send' ? '−' : '+'}{formattedAmount}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {token.symbol}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
