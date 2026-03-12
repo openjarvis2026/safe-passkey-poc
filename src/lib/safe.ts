@@ -48,6 +48,30 @@ const SAFE_ABI = [
     inputs: [],
     outputs: [{ name: '', type: 'uint256' }],
   },
+  {
+    name: 'getOwners',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'address[]' }],
+  },
+  {
+    name: 'getThreshold',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'addOwnerWithThreshold',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: '_threshold', type: 'uint256' },
+    ],
+    outputs: [],
+  },
 ] as const;
 
 const PROXY_FACTORY_ABI = [
@@ -135,4 +159,32 @@ export async function execTransaction(
 
   await publicClient.waitForTransactionReceipt({ hash: txHash });
   return txHash;
+}
+
+export async function getOwners(safeAddress: `0x${string}`): Promise<`0x${string}`[]> {
+  const owners = await publicClient.readContract({
+    address: safeAddress,
+    abi: SAFE_ABI,
+    functionName: 'getOwners',
+  });
+  return owners as `0x${string}`[];
+}
+
+export async function getThreshold(safeAddress: `0x${string}`): Promise<bigint> {
+  return publicClient.readContract({
+    address: safeAddress,
+    abi: SAFE_ABI,
+    functionName: 'getThreshold',
+  });
+}
+
+export function encodeAddOwnerWithThreshold(
+  owner: `0x${string}`,
+  threshold: bigint
+): Hex {
+  return encodeFunctionData({
+    abi: SAFE_ABI,
+    functionName: 'addOwnerWithThreshold',
+    args: [owner, threshold],
+  });
 }
