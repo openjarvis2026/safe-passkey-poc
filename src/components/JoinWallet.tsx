@@ -43,7 +43,7 @@ export default function JoinWallet({ safeAddress, onJoined }: Props) {
       setSignerAddress(addr);
 
       const existingOwners: SavedOwner[] = owners.map(o => ({
-        address: o, publicKey: { x: '', y: '' }, label: `Owner ${o.slice(0, 8)}`,
+        address: o, publicKey: { x: '', y: '' }, label: `Device ${o.slice(0, 8)}`,
       }));
       const localOwner: SavedOwner = {
         address: addr,
@@ -100,7 +100,7 @@ export default function JoinWallet({ safeAddress, onJoined }: Props) {
           <span className="text-sm">{threshold} of {owners.length}</span>
         </div>
         <div>
-          <p className="text-secondary text-xs mb-8">Current signers</p>
+          <p className="text-secondary text-xs mb-8">Authorized devices</p>
           {owners.map(o => (
             <p key={o} className="text-xs" style={{ fontFamily: 'monospace', padding: '2px 0', color: 'var(--text-secondary)' }}>
               {shortAddr(o)}
@@ -112,8 +112,8 @@ export default function JoinWallet({ safeAddress, onJoined }: Props) {
       {/* Done state */}
       {phase === 'done' && signerAddress && (
         <div className="card fade-in" style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>✅ Your signer is ready!</p>
-          <p className="text-secondary text-xs mb-8">Share this address with the wallet owner to be added as co-signer</p>
+          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>✅ Your device is ready!</p>
+          <p className="text-secondary text-xs mb-8">Share this address with the wallet owner to add your device</p>
           <div className="addr-chip" style={{ marginBottom: 12 }}>{signerAddress}</div>
           <div className="row">
             <button className="btn btn-primary btn-sm flex-1" onClick={copyAddr}>

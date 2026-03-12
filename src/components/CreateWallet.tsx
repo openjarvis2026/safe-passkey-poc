@@ -10,8 +10,8 @@ type Phase = 'idle' | 'biometrics' | 'signer' | 'safe' | 'done' | 'error';
 
 const STEPS: { phase: Phase; label: string }[] = [
   { phase: 'biometrics', label: 'Setting up biometrics…' },
-  { phase: 'signer', label: 'Creating your signer…' },
-  { phase: 'safe', label: 'Deploying your wallet…' },
+  { phase: 'signer', label: 'Setting up your device…' },
+  { phase: 'safe', label: 'Creating your wallet…' },
   { phase: 'done', label: 'Done! ✅' },
 ];
 

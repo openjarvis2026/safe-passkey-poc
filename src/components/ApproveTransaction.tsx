@@ -215,7 +215,7 @@ export default function ApproveTransaction({ encodedData }: Props) {
 
       {!isOwner && !localOwner && (
         <div className="card" style={{ textAlign: 'center' }}>
-          <p className="text-secondary text-sm">No signer found for this wallet. Join first via an invite link.</p>
+          <p className="text-secondary text-sm">No device found for this wallet. Join first via an invite link.</p>
         </div>
       )}
 

@@ -153,7 +153,7 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
         const encoded = encodeShareableTransaction(shareable);
         const url = `${window.location.origin}${window.location.pathname}#/sign?data=${encoded}`;
         setShareUrl(url);
-        setSendStatus(`Signed (1/${threshold}). Share with co-signers.`);
+        setSendStatus(`Signed (1/${threshold}). Share with other devices.`);
       }
     } catch (e: any) {
       setSendStatus(`Error: ${e.message}`);
@@ -184,7 +184,7 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
           ...safe, threshold: Number(newT),
           owners: safe.owners.concat(
             newOwners.filter(o => !safe.owners.some(so => so.address.toLowerCase() === o.toLowerCase()))
-              .map(o => ({ address: o, publicKey: { x: '', y: '' }, label: `Co-signer ${o.slice(0, 8)}` }))
+              .map(o => ({ address: o, publicKey: { x: '', y: '' }, label: `Device ${o.slice(0, 8)}` }))
           ),
         };
         saveSafe(updatedSafe);
@@ -202,7 +202,7 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
         const encoded = encodeShareableTransaction(shareable);
         const url = `${window.location.origin}${window.location.pathname}#/sign?data=${encoded}`;
         setShareUrl(url);
-        setAddStatus(`Signed (1/${threshold}). Share with co-signers.`);
+        setAddStatus(`Signed (1/${threshold}). Share with other devices.`);
       }
     } catch (e: any) {
       setAddStatus(`Error: ${e.message}`);
@@ -243,7 +243,7 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
       {/* Owners */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Signers</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Authorized Devices</h3>
           <span className="badge badge-success">{threshold} of {owners.length || safe.owners.length}</span>
         </div>
         <div className="stack">
@@ -255,7 +255,7 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
                   {addr.slice(2, 4).toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500 }}>{isLocal ? 'This Device' : `Signer ${addr.slice(2, 6)}`}</p>
+                  <p style={{ fontSize: 14, fontWeight: 500 }}>{isLocal ? 'This Device' : `Device ${addr.slice(2, 6)}`}</p>
                   <p className="text-muted text-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{shortAddr(addr)}</p>
                 </div>
                 {isLocal && <span className="badge badge-success">You</span>}
@@ -264,13 +264,13 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
           })}
         </div>
         <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => setView('add-owner')}>
-          + Add Co-Signer
+          + Add Device
         </button>
       </div>
 
       {/* Invite */}
       <div className="card" style={{ textAlign: 'center' }}>
-        <p className="text-secondary text-sm mb-8">Invite someone to create a signer for this wallet</p>
+        <p className="text-secondary text-sm mb-8">Invite someone to add their device to this wallet</p>
         <button className="btn btn-secondary btn-sm" onClick={() => {
           const url = `${window.location.origin}${window.location.pathname}#/join?safe=${safe.address}`;
           copy(url);
@@ -354,7 +354,7 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
 
       {shareUrl && (
         <div className="card fade-in" style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Share for co-signing</p>
+          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Share for approval</p>
           <canvas ref={shareQrRef} style={{ marginBottom: 12 }} />
           <div className="row">
             <button className="btn btn-secondary btn-sm flex-1" onClick={() => copy(shareUrl)}>📋 Copy</button>
@@ -389,13 +389,13 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
     <div className="fade-in stack-lg">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button className="btn btn-icon" style={{ width: 44, height: 44, fontSize: 20 }} onClick={() => { setView('home'); setAddStatus(''); }}>←</button>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Add Co-Signer</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Add Device</h2>
       </div>
 
       <div className="card">
-        <p className="text-secondary text-sm mb-8">Paste the signer address from the co-signer's device</p>
+        <p className="text-secondary text-sm mb-8">Paste the device address from the other device</p>
         <div className="stack">
-          <input className="input" placeholder="0x… signer address" value={newOwnerAddr} onChange={e => setNewOwnerAddr(e.target.value)} />
+          <input className="input" placeholder="0x… device address" value={newOwnerAddr} onChange={e => setNewOwnerAddr(e.target.value)} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <label className="text-secondary text-sm">New threshold:</label>
             <select className="select" value={newThreshold} onChange={e => setNewThreshold(Number(e.target.value))}>
@@ -419,7 +419,7 @@ export default function WalletDashboard({ safe, onDisconnect }: Props) {
 
       {shareUrl && (
         <div className="card fade-in" style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Share for co-signing</p>
+          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Share for approval</p>
           <canvas ref={shareQrRef} style={{ marginBottom: 12 }} />
           <div className="row">
             <button className="btn btn-secondary btn-sm flex-1" onClick={() => copy(shareUrl)}>📋 Copy</button>
