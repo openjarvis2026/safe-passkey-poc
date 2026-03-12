@@ -5,6 +5,7 @@ export interface SavedOwner {
   publicKey: { x: string; y: string }; // hex strings
   label: string;
   credentialId?: string; // base64 rawId, only for local device
+  pending?: boolean; // true if waiting for approval from other signers
 }
 
 export interface SavedSafe {
@@ -13,6 +14,7 @@ export interface SavedSafe {
   owners: SavedOwner[];
   threshold: number;
   deployTxHash: string;
+  pending?: boolean; // true if this device is pending approval
 }
 
 const STORAGE_KEY = 'safe-passkey-poc';
