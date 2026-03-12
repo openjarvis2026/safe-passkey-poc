@@ -8,9 +8,10 @@ import TokenSelector from './TokenSelector';
 import SafeSelector from './SafeSelector';
 import TransactionHistory from './TransactionHistory';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
-import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
+import { computeSafeTxHash, packSafeSignature, packLedgerSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
-import { type SavedSafe, saveSafe, clearSafe, base64ToArrayBuffer } from '../lib/storage';
+import { type SavedSafe, saveSafe, clearSafe, base64ToArrayBuffer, getSignerType } from '../lib/storage';
+import { connectLedger, signTransactionHash, disconnectLedger, getLedgerErrorMessage, type LedgerDevice } from '../lib/ledger';
 import {
   type ShareableTransaction,
   encodeShareableTransaction,
@@ -67,6 +68,12 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   // Transaction history
   const [txHistory, setTxHistory] = useState<Array<{ hash: string; timestamp: number; value: bigint }>>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+
+  // Ledger signing state
+  const [ledgerDevice, setLedgerDevice] = useState<LedgerDevice | null>(null);
+  const [ledgerStep, setLedgerStep] = useState<'connect' | 'open-app' | 'confirm' | 'done'>('connect');
+  const [ledgerError, setLedgerError] = useState('');
+  const [isLedgerFlow, setIsLedgerFlow] = useState(false);
 
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
@@ -125,10 +132,33 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   }, [shareUrl]);
 
   const handleSend = async () => {
-    if (!localCredentialId || !localOwner || !sendTo || !sendAmount || !selectedToken) return;
-    setSendStatus('Signing…');
+    if (!localOwner || !sendTo || !sendAmount || !selectedToken) return;
+    
+    // Reset states
     setTxHash('');
     setShareUrl('');
+    setLedgerError('');
+    
+    const signerType = getSignerType(safe);
+    
+    if (signerType === 'ledger') {
+      setIsLedgerFlow(true);
+      setLedgerStep('connect');
+      setSendStatus('');
+      await handleLedgerSend();
+    } else {
+      if (!localCredentialId) {
+        setSendStatus('Error: No passkey available');
+        return;
+      }
+      await handlePasskeySend();
+    }
+  };
+
+  const handlePasskeySend = async () => {
+    if (!localCredentialId || !localOwner || !sendTo || !sendAmount || !selectedToken) return;
+    setSendStatus('Signing…');
+    
     try {
       const recipientAddress = sendTo as `0x${string}`;
       let to: `0x${string}`;
@@ -182,6 +212,130 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   };
 
   // handleAddOwner removed - now using InviteSigner component
+  const handleLedgerSend = async () => {
+    if (!localOwner || !sendTo || !sendAmount || !selectedToken) return;
+    
+    try {
+      const recipientAddress = sendTo as `0x${string}`;
+      let to: `0x${string}`;
+      let value: bigint;
+      let data: `0x${string}`;
+
+      // Determine transaction parameters based on token type
+      if (selectedToken.address === '0x0000000000000000000000000000000000000000') {
+        // Native ETH transfer
+        to = recipientAddress;
+        value = parseUnits(sendAmount, selectedToken.decimals);
+        data = '0x';
+      } else {
+        // ERC-20 token transfer
+        to = selectedToken.address;
+        value = 0n;
+        const tokenAmount = parseUnits(sendAmount, selectedToken.decimals);
+        data = encodeERC20Transfer(recipientAddress, tokenAmount);
+      }
+
+      // Step 1: Connect Ledger
+      let device: LedgerDevice;
+      try {
+        device = await connectLedger();
+        setLedgerDevice(device);
+        setLedgerStep('open-app');
+      } catch (error: any) {
+        setLedgerError(getLedgerErrorMessage(error));
+        setIsLedgerFlow(false);
+        return;
+      }
+
+      // Step 2: Open Ethereum App (already validated in connectLedger)
+      setLedgerStep('confirm');
+
+      // Step 3: Sign transaction
+      try {
+        const nonce = await getNonce(safe.address);
+        const safeTxHash = computeSafeTxHash(safe.address, to, value, data, nonce);
+        const hashBytes = new Uint8Array(32);
+        for (let i = 0; i < 32; i++) hashBytes[i] = parseInt(safeTxHash.slice(2 + i * 2, 4 + i * 2), 16);
+
+        const signature = await signTransactionHash(device, hashBytes);
+        setLedgerStep('done');
+
+        if (threshold <= 1) {
+          setSendStatus('Executing…');
+          // Pack Ledger signature for Safe execution
+          const packed = packLedgerSignature(localOwner.address, signature.r, signature.s, signature.v);
+          const hash = await execTransaction(safe.address, to, value, data, packed);
+          setTxHash(hash);
+          setSendStatus('Sent! ✅');
+        } else {
+          // For multi-sig, create shareable transaction
+          // Note: For Ledger in multi-sig, we need to handle this differently
+          // For now, multi-sig Ledger is not fully supported in this implementation
+          setSendStatus('Multi-sig Ledger support coming soon');
+        }
+      } catch (error: any) {
+        setLedgerError(getLedgerErrorMessage(error));
+      } finally {
+        if (device) {
+          await disconnectLedger(device);
+          setLedgerDevice(null);
+        }
+        setIsLedgerFlow(false);
+      }
+    } catch (e: any) {
+      setLedgerError(`Error: ${e.message}`);
+      setIsLedgerFlow(false);
+    }
+  };
+
+  const handleAddOwner = async () => {
+    if (!localCredentialId || !localOwner || !newOwnerAddr) return;
+    setAddStatus('Adding owner…');
+    try {
+      const ownerAddr = newOwnerAddr as `0x${string}`;
+      const addOwnerData = encodeAddOwnerWithThreshold(ownerAddr, BigInt(newThreshold));
+      const nonce = await getNonce(safe.address);
+      const safeTxHash = computeSafeTxHash(safe.address, safe.address, 0n, addOwnerData, nonce);
+      const hashBytes = new Uint8Array(32);
+      for (let i = 0; i < 32; i++) hashBytes[i] = parseInt(safeTxHash.slice(2 + i * 2, 4 + i * 2), 16);
+
+      const sig = await signWithPasskey(localCredentialId, hashBytes);
+      const clientDataFields = extractClientDataFields(sig.clientDataJSON, sig.challengeOffset);
+
+      if (threshold <= 1) {
+        setAddStatus('Executing…');
+        const packed = packSafeSignature(localOwner.address, sig.authenticatorData, sig.clientDataJSON, sig.challengeOffset, sig.r, sig.s);
+        await execTransaction(safe.address, safe.address, 0n, addOwnerData, packed);
+        const newOwners = await getOwners(safe.address);
+        const newT = await getThreshold(safe.address);
+        const updatedSafe: SavedSafe = {
+          ...safe, threshold: Number(newT),
+          owners: safe.owners.concat(
+            newOwners.filter(o => !safe.owners.some(so => so.address.toLowerCase() === o.toLowerCase()))
+              .map(o => ({ address: o, publicKey: { x: '', y: '' }, label: `Device ${o.slice(0, 8)}` }))
+          ),
+        };
+        saveSafe(updatedSafe);
+        setThreshold(Number(newT));
+        setAddStatus('Owner added ✅');
+        setNewOwnerAddr('');
+      } else {
+        const sigData = packSingleSignerData(sig.authenticatorData, clientDataFields, sig.r, sig.s);
+        const shareable: ShareableTransaction = {
+          safe: safe.address, to: safe.address, value: '0', data: addOwnerData, nonce: nonce.toString(),
+          chainId: safe.chainId,
+          signatures: [{ signer: localOwner.address, data: sigData }],
+          threshold,
+        };
+        const encoded = encodeShareableTransaction(shareable);
+        const url = `${window.location.origin}${window.location.pathname}#/sign?data=${encoded}`;
+        setShareUrl(url);
+        setAddStatus(`Signed (1/${threshold}). Share with other devices.`);
+      }
+    } catch (e: any) {
+      setAddStatus(`Error: ${e.message}`);
+    }
+  };
 
   const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
   const share = (url: string) => navigator.share?.({ url }).catch(() => {});
@@ -320,6 +474,13 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           setSendTo('');
           setSendAmount('');
           setSelectedToken(NATIVE_TOKEN);
+          setIsLedgerFlow(false);
+          setLedgerStep('connect');
+          setLedgerError('');
+          if (ledgerDevice) {
+            disconnectLedger(ledgerDevice);
+            setLedgerDevice(null);
+          }
         }}>←</button>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>Send</h2>
       </div>
@@ -352,16 +513,109 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         </div>
       </div>
 
-      {threshold <= 1 ? (
-        <SlideToConfirm
-          label="Slide to send"
-          disabled={!sendTo || !sendAmount}
-          onConfirm={async () => { await handleSend(); }}
-        />
-      ) : (
-        <button className="btn btn-primary" onClick={handleSend} disabled={!sendTo || !sendAmount || sendStatus === 'Signing…' || sendStatus === 'Executing…'}>
-          {sendStatus === 'Signing…' || sendStatus === 'Executing…' ? <><div className="spinner" /> {sendStatus}</> : 'Send'}
-        </button>
+      {/* Ledger Step-by-Step UI */}
+      {isLedgerFlow && (
+        <div className="stack">
+          {/* Step 1: Connect Ledger */}
+          <div className={`card ${ledgerStep === 'connect' ? 'active-step' : (ledgerStep === 'open-app' || ledgerStep === 'confirm' || ledgerStep === 'done') && !ledgerError ? 'completed-step' : ''}`} 
+               style={{ border: ledgerStep === 'connect' ? '2px solid var(--primary-from)' : (ledgerStep === 'open-app' || ledgerStep === 'confirm' || ledgerStep === 'done') && !ledgerError ? '2px solid var(--success)' : '2px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="step-number" style={{ 
+                width: 32, height: 32, borderRadius: '50%', 
+                background: ledgerStep === 'connect' ? 'var(--primary-from)' : (ledgerStep === 'open-app' || ledgerStep === 'confirm' || ledgerStep === 'done') && !ledgerError ? 'var(--success)' : 'var(--border)',
+                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 600
+              }}>
+                {ledgerStep === 'connect' && !ledgerError && <div className="spinner" style={{ width: 16, height: 16 }} />}
+                {(ledgerStep === 'open-app' || ledgerStep === 'confirm' || ledgerStep === 'done') && !ledgerError && '✅'}
+                {(ledgerError || ledgerStep === 'connect') && '1'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Connect Ledger</p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Plug in and unlock your Ledger</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2: Open Ethereum App */}
+          <div className={`card ${ledgerStep === 'open-app' ? 'active-step' : ledgerStep === 'confirm' || ledgerStep === 'done' ? 'completed-step' : ''}`}
+               style={{ border: ledgerStep === 'open-app' ? '2px solid var(--primary-from)' : (ledgerStep === 'confirm' || ledgerStep === 'done') ? '2px solid var(--success)' : '2px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="step-number" style={{ 
+                width: 32, height: 32, borderRadius: '50%', 
+                background: ledgerStep === 'open-app' ? 'var(--primary-from)' : (ledgerStep === 'confirm' || ledgerStep === 'done') ? 'var(--success)' : 'var(--border)',
+                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 600
+              }}>
+                {ledgerStep === 'open-app' && <div className="spinner" style={{ width: 16, height: 16 }} />}
+                {(ledgerStep === 'confirm' || ledgerStep === 'done') && '✅'}
+                {ledgerStep !== 'open-app' && ledgerStep !== 'confirm' && ledgerStep !== 'done' && '2'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Open Ethereum App</p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Launch Ethereum app on your Ledger</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3: Confirm Transaction */}
+          <div className={`card ${ledgerStep === 'confirm' ? 'active-step' : ledgerStep === 'done' ? 'completed-step' : ''}`}
+               style={{ border: ledgerStep === 'confirm' ? '2px solid var(--primary-from)' : ledgerStep === 'done' ? '2px solid var(--success)' : '2px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="step-number" style={{ 
+                width: 32, height: 32, borderRadius: '50%', 
+                background: ledgerStep === 'confirm' ? 'var(--primary-from)' : ledgerStep === 'done' ? 'var(--success)' : 'var(--border)',
+                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 600
+              }}>
+                {ledgerStep === 'confirm' && <div className="spinner" style={{ width: 16, height: 16 }} />}
+                {ledgerStep === 'done' && '✅'}
+                {ledgerStep !== 'confirm' && ledgerStep !== 'done' && '3'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Confirm Transaction</p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Review and approve on your Ledger</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Ledger Error */}
+          {ledgerError && (
+            <div className="card" style={{ border: '2px solid var(--error)', background: 'rgba(239, 68, 68, 0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, color: 'var(--error)' }}>Connection Error</p>
+                  <p style={{ fontSize: 13, margin: 0 }}>{ledgerError}</p>
+                </div>
+              </div>
+              <button className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => {
+                setLedgerError('');
+                setIsLedgerFlow(false);
+                setLedgerStep('connect');
+              }}>
+                Try Again
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Regular Send UI (when not in Ledger flow) */}
+      {!isLedgerFlow && (
+        <>
+          {threshold <= 1 ? (
+            <SlideToConfirm
+              label="Slide to send"
+              disabled={!sendTo || !sendAmount}
+              onConfirm={async () => { await handleSend(); }}
+            />
+          ) : (
+            <button className="btn btn-primary" onClick={handleSend} disabled={!sendTo || !sendAmount || sendStatus === 'Signing…' || sendStatus === 'Executing…'}>
+              {sendStatus === 'Signing…' || sendStatus === 'Executing…' ? <><div className="spinner" /> {sendStatus}</> : 'Send'}
+            </button>
+          )}
+        </>
       )}
 
       {sendStatus && sendStatus !== 'Signing…' && sendStatus !== 'Executing…' && (

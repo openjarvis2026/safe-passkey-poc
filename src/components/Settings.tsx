@@ -247,14 +247,18 @@ export default function Settings({ safe, onBack }: Props) {
             <h3 style={{ fontSize: 16, fontWeight: 600 }}>Signer Type</h3>
             <p className="text-muted text-sm">How you sign transactions</p>
           </div>
-          <span className="badge badge-success">Passkey</span>
+          <span className="badge badge-success">
+            {localOwner?.credentialId ? 'Passkey' : 'Ledger'}
+          </span>
         </div>
-        <button 
-          className="btn btn-secondary btn-sm" 
-          onClick={() => setShowSignerSwitch(true)}
-        >
-          Switch to Ledger
-        </button>
+        {localOwner?.credentialId && (
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={() => setShowSignerSwitch(true)}
+          >
+            Switch to Ledger
+          </button>
+        )}
       </div>
 
       {/* Safety Notice */}

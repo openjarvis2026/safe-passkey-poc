@@ -5,7 +5,10 @@ export interface SavedOwner {
   publicKey: { x: string; y: string }; // hex strings
   label: string;
   credentialId?: string; // base64 rawId, only for local device
+
   pending?: boolean; // true if waiting for approval from other signers
+
+  signerType?: 'passkey' | 'ledger'; // type of signer for this owner
 }
 
 export interface SavedSafe {
@@ -124,4 +127,21 @@ export function base64ToArrayBuffer(b64: string): ArrayBuffer {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
+}
+
+// Helper to determine the signer type for a Safe
+export function getSignerType(safe: SavedSafe): 'passkey' | 'ledger' {
+  const localOwner = safe.owners.find(o => o.credentialId);
+  if (!localOwner) {
+    // If there's no credentialId, this is likely a Ledger owner
+    return 'ledger';
+  }
+  
+  // Check explicit signerType first
+  if (localOwner.signerType) {
+    return localOwner.signerType;
+  }
+  
+  // Fallback: if there's a credentialId, it's a passkey
+  return 'passkey';
 }

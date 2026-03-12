@@ -126,3 +126,43 @@ export function packSafeSignature(
 
   return concat([staticPart, dynamicPart]);
 }
+
+export function packLedgerSignature(
+  signerAddress: `0x${string}`,
+  r: string,
+  s: string,
+  v: number
+): Hex {
+  // For ECDSA signatures (Ledger), Safe expects:
+  // Static part (65 bytes):
+  //   32 bytes: signer address (padded)
+  //   32 bytes: offset = 65
+  //   1 byte: signature type = 0x01 (EOA signature)
+  // Dynamic part:
+  //   32 bytes: signature length = 65
+  //   65 bytes: signature data (r+s+v)
+
+  // Ensure r and s have 0x prefix
+  const rHex = r.startsWith('0x') ? r : `0x${r}`;
+  const sHex = s.startsWith('0x') ? s : `0x${s}`;
+  
+  // Pack signature: r (32) + s (32) + v (1) = 65 bytes
+  const signature = concat([
+    pad(rHex as Hex, { size: 32 }),
+    pad(sHex as Hex, { size: 32 }),
+    pad(toHex(v), { size: 1 }),
+  ]);
+
+  const staticPart = concat([
+    pad(signerAddress, { size: 32 }),
+    pad(toHex(65n), { size: 32 }),
+    '0x01', // EOA signature type
+  ]);
+
+  const dynamicPart = concat([
+    pad(toHex(65n), { size: 32 }), // signature length
+    signature,
+  ]);
+
+  return concat([staticPart, dynamicPart]);
+}
