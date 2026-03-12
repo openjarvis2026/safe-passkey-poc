@@ -16,14 +16,6 @@
 - Token list management (add custom tokens)
 - Display portfolio value in USD
 
-## ENS Subdomains per Safe (requires backend/DB + ENS setup)
-- User picks a name when creating a Safe (e.g. "laSafeDeAugusto")
-- App registers it as a subdomain: `laSafeDeAugusto.simplysafe.eth`
-- Requires owning `simplysafe.eth` (or chosen parent domain) and a resolver setup
-- Subdomain → Safe address resolution on-chain
-- Needs DB to track name availability / reservations
-- Consider: name validation rules, transfer/rename policy, reverse resolution
-
 ## Additional Features
 - Gas estimation and fee display
 - Transaction simulation before execution

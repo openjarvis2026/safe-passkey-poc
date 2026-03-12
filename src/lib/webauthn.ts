@@ -46,9 +46,18 @@ function parsePublicKey(attestationObject: ArrayBuffer): { x: bigint; y: bigint 
   const publicKeyOffset = credDataOffset + 18 + credIdLen;
 
   const publicKeyCbor = decode(authData.slice(publicKeyOffset));
-  // COSE key: -2 (0x21) = x, -3 (0x22) = y
-  const x = publicKeyCbor.get(-2) as Uint8Array;
-  const y = publicKeyCbor.get(-3) as Uint8Array;
+  // COSE key: -2 = x, -3 = y
+  // cbor-x may return a Map or a plain object depending on the CBOR structure
+  let x: Uint8Array;
+  let y: Uint8Array;
+  if (publicKeyCbor instanceof Map) {
+    x = publicKeyCbor.get(-2) as Uint8Array;
+    y = publicKeyCbor.get(-3) as Uint8Array;
+  } else {
+    // Plain object with string keys (cbor-x default for integer-keyed maps)
+    x = publicKeyCbor[-2] ?? publicKeyCbor['-2'];
+    y = publicKeyCbor[-3] ?? publicKeyCbor['-3'];
+  }
 
   return {
     x: bytesToBigInt(x),

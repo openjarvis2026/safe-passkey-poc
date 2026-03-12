@@ -75,19 +75,32 @@ export function packSafeSignature(
   r: bigint,
   s: bigint
 ): Hex {
-  // ABI-encode the WebAuthnSignature struct
-  const clientDataBytes = new TextEncoder().encode(clientDataJSON);
+  // The Safe WebAuthn module v0.2.1 expects:
+  //   (bytes authenticatorData, bytes clientDataFields, uint256[2] rs)
+  // where clientDataFields is the portion of clientDataJSON AFTER the challenge value.
+  // The contract reconstructs the full JSON as:
+  //   {"type":"webauthn.get","challenge":"<base64url(hash)>",<clientDataFields>}
+  //
+  // Given clientDataJSON like:
+  //   {"type":"webauthn.get","challenge":"ABC123","origin":"https://...","crossOrigin":false}
+  // clientDataFields should be:
+  //   "origin":"https://...","crossOrigin":false
+
+  // Find the end of the challenge value (closing quote after challengeOffset)
+  const challengeEnd = clientDataJSON.indexOf('"', challengeOffset);
+  // Skip '","' to get to the fields after challenge
+  const clientDataFields = clientDataJSON.slice(challengeEnd + 2, clientDataJSON.length - 1);
+  const clientDataFieldsBytes = new TextEncoder().encode(clientDataFields);
+
   const webauthnSig = encodeAbiParameters(
     [
-      { type: 'bytes' },    // authenticatorData
-      { type: 'bytes' },    // clientDataFields (portion after challenge)
-      { type: 'uint256' },  // challengeOffset (byte offset in clientDataJSON)
-      { type: 'uint256[2]' }, // rs
+      { type: 'bytes' },      // authenticatorData
+      { type: 'bytes' },      // clientDataFields
+      { type: 'uint256[2]' }, // [r, s]
     ],
     [
       toHex(authenticatorData),
-      toHex(clientDataBytes),
-      BigInt(challengeOffset),
+      toHex(clientDataFieldsBytes),
       [r, s],
     ]
   );

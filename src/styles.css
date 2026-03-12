@@ -1,0 +1,260 @@
+/* Passkey Wallet — Global Styles */
+
+:root {
+  --primary-from: #6366F1;
+  --primary-to: #8B5CF6;
+  --success: #10B981;
+  --success-light: #D1FAE5;
+  --danger: #EF4444;
+  --bg: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --border: #E2E8F0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --gradient: linear-gradient(135deg, var(--primary-from), var(--primary-to));
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: 24px 20px 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Typography ---- */
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.text-success   { color: var(--success); }
+.text-center     { text-align: center; }
+.text-sm        { font-size: 14px; }
+.text-xs        { font-size: 12px; }
+
+/* ---- Card ---- */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+.card-gradient {
+  background: var(--gradient);
+  color: #fff;
+  border-radius: var(--radius-xl);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 16px;
+}
+
+/* ---- Buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.1s, opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-primary {
+  background: var(--gradient);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+}
+.btn-secondary {
+  background: var(--bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-success {
+  background: var(--success);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(16,185,129,0.3);
+}
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  font-size: 14px;
+  padding: 12px;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--primary-from);
+  font-size: 14px;
+  padding: 12px;
+}
+.btn-sm {
+  padding: 10px 16px;
+  font-size: 14px;
+}
+.btn-icon {
+  width: auto;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+/* ---- Inputs ---- */
+.input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 16px;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--primary-from); }
+.input::placeholder { color: var(--text-muted); }
+
+/* ---- Layout helpers ---- */
+.stack    { display: flex; flex-direction: column; gap: 12px; }
+.stack-lg { display: flex; flex-direction: column; gap: 20px; }
+.row      { display: flex; gap: 12px; }
+.flex-1   { flex: 1; }
+.mt-auto  { margin-top: auto; }
+.mb-8     { margin-bottom: 8px; }
+
+/* ---- Owner avatar ---- */
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #fff;
+  flex-shrink: 0;
+}
+
+/* ---- Address chip ---- */
+.addr-chip {
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+  font-size: 13px;
+  background: var(--bg);
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  word-break: break-all;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* ---- Progress dots ---- */
+.progress-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 16px 0;
+}
+.progress-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.progress-dot.active { background: var(--primary-from); }
+.progress-dot.done   { background: var(--success); }
+
+/* ---- Spinner ---- */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 24px; height: 24px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+.spinner-dark {
+  border-color: rgba(0,0,0,0.1);
+  border-top-color: var(--primary-from);
+}
+
+/* ---- Fade in ---- */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadeIn 0.3s ease-out; }
+
+/* ---- Badge ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-success { background: var(--success-light); color: #065F46; }
+
+/* ---- Select ---- */
+/* ---- Slide to Confirm ---- */
+.slide-track {
+  transition: background 0.3s;
+}
+.slide-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.slide-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.4) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* ---- Transaction History ---- */
+.tx-history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tx-history-item:last-child {
+  border-bottom: none;
+}
+
+/* ---- Select ---- */
+.select {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  outline: none;
+}
