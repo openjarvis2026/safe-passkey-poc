@@ -86,7 +86,7 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
     }
 
     // Wait for transaction to complete
-    await expect(page.getByText(/sent|✅/i)).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
+    await expect(page.getByText('Sent! ✅')).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
     console.log('Send transaction completed');
 
     // ── 9. Navigate to History ──

@@ -8,6 +8,7 @@ import TokenSelector from './TokenSelector';
 import SafeSelector from './SafeSelector';
 import TransactionHistory from './TransactionHistory';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
+import { cacheLocalTransaction } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { type SavedSafe, saveSafe, clearSafe, base64ToArrayBuffer } from '../lib/storage';
@@ -163,6 +164,10 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         const packed = packSafeSignature(localOwner.address, sig.authenticatorData, sig.clientDataJSON, sig.challengeOffset, sig.r, sig.s);
         const hash = await execTransaction(safe.address, to, value, data, packed);
         setTxHash(hash);
+        // Cache locally so it shows in history immediately
+        const sentAmount = selectedToken.address === '0x0000000000000000000000000000000000000000'
+          ? value : parseUnits(sendAmount, selectedToken.decimals);
+        cacheLocalTransaction(safe.address, hash, recipientAddress, sentAmount, selectedToken);
         setSendStatus('Sent! ✅');
       } else {
         const sigData = packSingleSignerData(sig.authenticatorData, clientDataFields, sig.r, sig.s);

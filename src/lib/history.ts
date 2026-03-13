@@ -399,6 +399,10 @@ export async function fetchTransactionHistory(
       console.warn('On-chain fallback failed, using API results only:', err);
     }
 
+    // Merge locally cached sent transactions (always reliable)
+    const localTxs = getLocalTransactions(checksummedAddress);
+    transactions.push(...localTxs);
+
     if (transactions.length === 0) {
       return [];
     }
@@ -566,6 +570,68 @@ async function fetchOnChainTransactions(
   }
 
   return transactions;
+}
+
+// ── Local transaction cache ──
+// Safe Transaction Service is unreliable for custom-deployed Safes.
+// We cache sent transactions in localStorage so they appear in history immediately.
+
+const LOCAL_TX_KEY = 'simply_sent_transactions';
+
+interface LocalTxRecord {
+  txHash: string;
+  safeAddress: string;
+  to: string;
+  amount: string; // stringified bigint
+  token: Token;
+  timestamp: string;
+}
+
+export function cacheLocalTransaction(
+  safeAddress: `0x${string}`,
+  txHash: string,
+  to: `0x${string}`,
+  amount: bigint,
+  token: Token
+): void {
+  try {
+    const existing: LocalTxRecord[] = JSON.parse(localStorage.getItem(LOCAL_TX_KEY) || '[]');
+    existing.push({
+      txHash,
+      safeAddress,
+      to,
+      amount: amount.toString(),
+      token,
+      timestamp: new Date().toISOString(),
+    });
+    // Keep last 100 records
+    if (existing.length > 100) existing.splice(0, existing.length - 100);
+    localStorage.setItem(LOCAL_TX_KEY, JSON.stringify(existing));
+  } catch (e) {
+    console.warn('Failed to cache local transaction:', e);
+  }
+}
+
+function getLocalTransactions(safeAddress: `0x${string}`): SafeTransaction[] {
+  try {
+    const records: LocalTxRecord[] = JSON.parse(localStorage.getItem(LOCAL_TX_KEY) || '[]');
+    return records
+      .filter(r => r.safeAddress.toLowerCase() === safeAddress.toLowerCase())
+      .map(r => ({
+        txHash: r.txHash,
+        type: 'send' as const,
+        to: r.to as `0x${string}`,
+        from: safeAddress,
+        amount: BigInt(r.amount),
+        token: r.token,
+        timestamp: r.timestamp,
+        status: 'confirmed' as const,
+        safe: safeAddress,
+        executionDate: r.timestamp,
+      }));
+  } catch {
+    return [];
+  }
 }
 
 // Format relative time (e.g., "2h ago", "3d ago")
