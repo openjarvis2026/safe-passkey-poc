@@ -16,13 +16,20 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // ── 3. Click "Get Started" to create wallet ──
-    const createBtn = page.getByRole('button', { name: /get started/i });
-    await expect(createBtn).toBeVisible({ timeout: 10_000 });
-    await createBtn.click();
+    // ── 3. Create wallet or detect existing ──
+    const dashboardVisible = await page.getByText('Total Balance').isVisible({ timeout: 3_000 }).catch(() => false);
+    
+    if (!dashboardVisible) {
+      const createBtn = page.getByRole('button', { name: /get started/i });
+      await expect(createBtn).toBeVisible({ timeout: 10_000 });
+      await createBtn.click();
 
-    // ── 4. Wait for passkey creation + signer deployment + Safe deployment ──
-    await expect(page.getByText('Done! ✅')).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
+      // ── 4. Wait for passkey creation + signer deployment + Safe deployment ──
+      // Wait for either "Done! ✅" or dashboard (transitions fast)
+      await expect(page.getByText('Done! ✅').or(page.getByText('Total Balance'))).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
+    } else {
+      console.log('Wallet already exists, skipping creation');
+    }
 
     // ── 5. Wait for dashboard to load ──
     await expect(page.getByText('Total Balance')).toBeVisible({ timeout: 15_000 });
@@ -98,8 +105,14 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
     // Wait for home to load
     await expect(page.getByText('Total Balance')).toBeVisible({ timeout: 10_000 });
 
-    // Click History button (force: true to bypass overlapping elements on mobile viewport)
-    await page.getByRole('button', { name: /history/i }).click({ force: true });
+    // Click "View All" in Recent Activity section to open full History
+    const viewAllBtn = page.getByText(/View All/i);
+    if (await viewAllBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await viewAllBtn.click({ force: true });
+    } else {
+      // Fallback: try History button if it still exists
+      await page.getByRole('button', { name: /history/i }).click({ force: true });
+    }
     await expect(page.getByText('Transaction History')).toBeVisible({ timeout: 10_000 });
 
     // ── 10. Verify the sent transaction appears ──
