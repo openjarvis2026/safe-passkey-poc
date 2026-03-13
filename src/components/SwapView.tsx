@@ -3,6 +3,7 @@ import { type SavedSafe } from '../lib/storage';
 import { type Token, NATIVE_TOKEN, TOKENS } from '../lib/tokens';
 import { getSwapQuote, encodeSwapTransaction, formatSwapQuote, type SwapQuote } from '../lib/swap';
 import { getNonce, execTransaction } from '../lib/safe';
+import { savePendingTransaction } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { base64ToArrayBuffer } from '../lib/storage';
@@ -117,6 +118,14 @@ export default function SwapView({ safe, onBack }: Props) {
         const encoded = encodeShareableTransaction(shareable);
         const url = `${window.location.origin}${window.location.pathname}#/sign?data=${encoded}`;
         setShareUrl(url);
+        savePendingTransaction(safe.address, {
+          id: `${safe.address}-${nonce}-${Date.now()}`,
+          to: swapTx.to, value: swapTx.value.toString(), data: swapTx.data,
+          token: tokenFrom,
+          nonce: nonce.toString(),
+          createdAt: new Date().toISOString(),
+          threshold, signatureCount: 1, shareUrl: url,
+        });
         setSwapStatus(`Swap signed (1/${threshold}). Share with other devices.`);
       }
     } catch (error: any) {
