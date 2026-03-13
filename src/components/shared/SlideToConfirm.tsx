@@ -74,11 +74,13 @@ export default function SlideToConfirm({ onConfirm, label = 'Slide to approve', 
   const thumbX = 6 + progress * maxTravel;
 
   const isActive = state === 'confirming' || state === 'success';
-  const trackBg = state === 'success'
+  const trackBg = disabled
+    ? '#555'
+    : state === 'success'
     ? 'var(--success)'
     : state === 'dragging' || state === 'confirming'
-    ? `linear-gradient(90deg, var(--primary-from) ${progress * 100}%, var(--text-primary) ${progress * 100}%)`
-    : 'var(--text-primary)';
+    ? `linear-gradient(90deg, var(--primary-from) ${progress * 100}%, var(--primary-to) ${progress * 100}%)`
+    : 'linear-gradient(135deg, var(--primary-from), var(--primary-to))';
 
   const displayText = state === 'confirming' ? statusText
     : state === 'success' ? '✅ Done!'

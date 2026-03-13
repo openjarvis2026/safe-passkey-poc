@@ -55,6 +55,8 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   const [selectedToken, setSelectedToken] = useState<Token>(NATIVE_TOKEN);
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
   const [showTokenSelector, setShowTokenSelector] = useState(false);
+  const [sendMemo, setSendMemo] = useState('');
+  const [showReview, setShowReview] = useState(false);
   const shareQrRef = useRef<HTMLCanvasElement>(null);
 
   // Receive

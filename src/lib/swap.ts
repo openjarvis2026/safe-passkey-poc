@@ -373,7 +373,7 @@ export function formatSwapQuote(quote: SwapQuote): {
   return {
     amountIn: amountInFormatted,
     amountOut: amountOutFormatted,
-    rate: `1 ${quote.tokenIn.symbol} = ${rate.toFixed(6)} ${quote.tokenOut.symbol}`,
+    rate: `1 ${quote.tokenIn.symbol} = ${rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ${quote.tokenOut.symbol}`,
     feeAmount: feeFormatted,
     priceImpact: `${quote.priceImpact.toFixed(2)}%`
   };
