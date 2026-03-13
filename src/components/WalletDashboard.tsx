@@ -68,6 +68,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   const [recentTxs, setRecentTxs] = useState<SafeTransaction[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [headerCopied, setHeaderCopied] = useState(false);
 
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
@@ -211,7 +212,15 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
     <div className="fade-in stack-lg">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>🔐 Passkey Wallet</h2>
+        <h2 
+          style={{ fontSize: 20, fontWeight: 700, cursor: 'pointer' }} 
+          onClick={() => {
+            copy(safe.address);
+            setHeaderCopied(true);
+            setTimeout(() => setHeaderCopied(false), 2000);
+          }}
+          title="Tap to copy address"
+        >{headerCopied ? '✅ Copied!' : '🔐 My Wallet'}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <SafeSelector currentSafe={safe} onSafeChanged={onSafeChanged} />
           <button 
@@ -305,10 +314,10 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           </div>
         ) : recentTxs.length === 0 ? (
           <div className="card">
-            <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No transactions yet</p>
+            <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No activity yet — send or receive to get started</p>
           </div>
         ) : (
-          <div>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {recentTxs.slice(0, 5).map(tx => (
               <TransactionItem key={tx.txHash} transaction={tx} />
             ))}
