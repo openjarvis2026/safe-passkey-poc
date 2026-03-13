@@ -17,21 +17,6 @@ function shortAddr(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-// Get token icon based on symbol
-function getTokenIcon(symbol: string): string {
-  switch (symbol) {
-    case 'ETH':
-      return '⚡';
-    case 'USDC':
-      return '💙';
-    case 'USDT':
-      return '💚';
-    case 'WETH':
-      return '🔷';
-    default:
-      return '🪙';
-  }
-}
 
 export default function TransactionItem({ transaction, onResend }: Props) {
   const { txHash, type, to, from, amount, token, timestamp, status, safe } = transaction;

@@ -180,7 +180,7 @@ export default function SwapView({ safe, onBack }: Props) {
         >
           ←
         </button>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Swap Tokens</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Convert</h2>
         <div style={{ marginLeft: 'auto' }}>
           <button 
             className="btn btn-icon" 
@@ -195,10 +195,10 @@ export default function SwapView({ safe, onBack }: Props) {
       {/* Settings Panel */}
       {showSettings && (
         <div className="card fade-in">
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Swap Settings</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Settings</h3>
           <div>
             <label style={{ fontSize: 14, fontWeight: 500, marginBottom: 8, display: 'block' }}>
-              Slippage Tolerance
+              Price Flexibility
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
               {[0.1, 0.5, 1.0, 3.0].map(value => (
@@ -327,15 +327,15 @@ export default function SwapView({ safe, onBack }: Props) {
               <span>{formattedQuote.rate}</span>
             </div>
             <div className="swap-quote-row">
-              <span>Protocol Fee (0.5%)</span>
+              <span>Service Fee (0.5%)</span>
               <span>{(() => { const fee = parseFloat(formattedQuote.feeAmount); return fee > 0 && fee < 0.000001 ? '< 0.000001' : fee.toFixed(6); })()} {tokenFrom.symbol}</span>
             </div>
             <div className="swap-quote-row">
-              <span>Price Impact</span>
+              <span>Rate variance</span>
               <span className="text-success">{formattedQuote.priceImpact}</span>
             </div>
             <div className="swap-quote-row">
-              <span>Min. Received</span>
+              <span>You'll get at least</span>
               <span>{(parseFloat(formattedQuote.amountOut) * (100 - slippage) / 100).toFixed(6)} {tokenTo.symbol}</span>
             </div>
           </div>
@@ -362,7 +362,7 @@ export default function SwapView({ safe, onBack }: Props) {
               {swapStatus}
             </>
           ) : (
-            'Swap Tokens'
+            'Convert'
           )}
         </button>
       )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
 import { getTokenBalances, formatTokenAmount, formatUSDValue, type TokenBalance } from '../lib/tokens';
+import TokenIcon from './TokenIcon';
 
 interface Props {
   safeAddress: `0x${string}`;
@@ -96,11 +97,7 @@ export default function TokenList({ safeAddress, ethBalance }: Props) {
               key={token.address} 
               className={`token-item ${!hasBalance ? 'token-item-zero' : ''}`}
             >
-              <div className="token-icon">
-                {token.symbol === 'ETH' && '⚡'}
-                {token.symbol === 'USDC' && '💙'}
-                {token.symbol === 'USDT' && '💚'}
-              </div>
+              <TokenIcon symbol={token.symbol} size={36} />
               
               <div className="token-info">
                 <div className="token-symbol">{token.symbol}</div>

@@ -3,6 +3,7 @@ import { type SafeTransaction, fetchTransactionHistory, type PendingTransaction,
 import { TOKENS, type Token, NATIVE_TOKEN } from '../lib/tokens';
 import TransactionItem from './TransactionItem';
 import PendingTransactionItem from './PendingTransactionItem';
+import TokenIcon from './TokenIcon';
 
 interface Props {
   safeAddress: `0x${string}`;
@@ -12,21 +13,6 @@ interface Props {
 
 type FilterOption = 'all' | Token['address'];
 
-// Get token icon for filter chips
-function getTokenIcon(symbol: string): string {
-  switch (symbol) {
-    case 'ETH':
-      return '⚡';
-    case 'USDC':
-      return '💙';
-    case 'USDT':
-      return '💚';
-    case 'WETH':
-      return '🔷';
-    default:
-      return '🪙';
-  }
-}
 
 export default function TransactionHistory({ safeAddress, onBack, onResend }: Props) {
   const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
@@ -105,7 +91,7 @@ export default function TransactionHistory({ safeAddress, onBack, onResend }: Pr
               className={`filter-chip ${selectedFilter === token.address ? 'filter-chip-active' : ''}`}
               onClick={() => setSelectedFilter(token.address)}
             >
-              <span style={{ fontSize: 14 }}>{getTokenIcon(token.symbol)}</span>
+              <TokenIcon symbol={token.symbol} size={16} />
               <span>{token.symbol}</span>
             </button>
           ))}

@@ -8,6 +8,7 @@ import TokenSelector from './TokenSelector';
 import SafeSelector from './SafeSelector';
 import TransactionHistory from './TransactionHistory';
 import TransactionItem from './TransactionItem';
+import TokenIcon from './TokenIcon';
 import SwapView from './SwapView';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
 import { cacheLocalTransaction, fetchTransactionHistory, savePendingTransaction } from '../lib/history';
@@ -236,7 +237,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           Receive
         </button>
         <button className="btn btn-secondary flex-1" onClick={() => setView('swap')}>
-          Swap
+          Convert
         </button>
       </div>
 
@@ -268,17 +269,6 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         </div>
         <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => window.location.hash = `#/invite?safe=${safe.address}`}>
           + Add Device
-        </button>
-      </div>
-
-      {/* Invite */}
-      <div className="card" style={{ textAlign: 'center' }}>
-        <p className="text-secondary text-sm mb-8">Invite someone to add their device to this wallet</p>
-        <button className="btn btn-secondary btn-sm" onClick={() => {
-          const url = `${window.location.origin}${window.location.pathname}#/join?safe=${safe.address}`;
-          copy(url);
-        }}>
-          📋 Copy Invite Link
         </button>
       </div>
 
@@ -339,19 +329,14 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       </div>
 
       <div className="stack">
-        <input className="input" placeholder="Recipient address (0x…)" value={sendTo} onChange={e => setSendTo(e.target.value)} />
+        <input className="input" placeholder="Recipient address" value={sendTo} onChange={e => setSendTo(e.target.value)} />
         
         <div className="send-token-input">
           <button 
             className="send-token-selector"
             onClick={() => setShowTokenSelector(true)}
           >
-            <span style={{ fontSize: 20 }}>
-              {selectedToken.symbol === 'ETH' && '⚡'}
-              {selectedToken.symbol === 'USDC' && '💙'}
-              {selectedToken.symbol === 'USDT' && '💚'}
-              {selectedToken.symbol === 'WETH' && '🔷'}
-            </span>
+            <TokenIcon symbol={selectedToken.symbol} size={24} />
             <span>{selectedToken.symbol}</span>
             <span style={{ fontSize: 12, opacity: 0.7 }}>▼</span>
           </button>
