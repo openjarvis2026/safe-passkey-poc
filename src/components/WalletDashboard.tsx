@@ -335,44 +335,118 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           setShareUrl('');
           setSendTo('');
           setSendAmount('');
+          setSendMemo('');
+          setShowReview(false);
           setSelectedToken(NATIVE_TOKEN);
         }}>←</button>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>Send</h2>
       </div>
 
-      <div className="stack">
-        <input className="input" placeholder="Recipient address" value={sendTo} onChange={e => setSendTo(e.target.value)} />
-        
-        <div className="send-token-input">
-          <button 
-            className="send-token-selector"
-            onClick={() => setShowTokenSelector(true)}
-          >
-            <TokenIcon symbol={selectedToken.symbol} size={24} />
-            <span>{selectedToken.symbol}</span>
-            <span style={{ fontSize: 12, opacity: 0.7 }}>▼</span>
-          </button>
-          
-          <input 
-            className="send-amount-input"
-            placeholder={`Amount (${selectedToken.symbol})`}
-            value={sendAmount}
-            onChange={e => setSendAmount(e.target.value)}
-            inputMode="decimal"
-          />
-        </div>
-      </div>
+      {!showReview && !txHash && (
+        <>
+          <div className="stack">
+            <input className="input" placeholder="Recipient address" value={sendTo} onChange={e => setSendTo(e.target.value)} />
+            
+            <div className="send-token-input">
+              <button 
+                className="send-token-selector"
+                onClick={() => setShowTokenSelector(true)}
+              >
+                <TokenIcon symbol={selectedToken.symbol} size={24} />
+                <span>{selectedToken.symbol}</span>
+                <span style={{ fontSize: 12, opacity: 0.7 }}>▼</span>
+              </button>
+              
+              <input 
+                className="send-amount-input"
+                placeholder={`Amount (${selectedToken.symbol})`}
+                value={sendAmount}
+                onChange={e => setSendAmount(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
 
-      {threshold <= 1 ? (
-        <SlideToConfirm
-          label="Slide to send"
-          disabled={!sendTo || !sendAmount}
-          onConfirm={async () => { await handleSend(); }}
-        />
-      ) : (
-        <button className="btn btn-primary" onClick={handleSend} disabled={!sendTo || !sendAmount || sendStatus === 'Signing…' || sendStatus === 'Executing…'}>
-          {sendStatus === 'Signing…' || sendStatus === 'Executing…' ? <><div className="spinner" /> {sendStatus}</> : 'Send'}
-        </button>
+            {/* Available balance + Max */}
+            {(() => {
+              const tb = tokenBalances.find(b => b.token.address.toLowerCase() === selectedToken.address.toLowerCase());
+              if (!tb) return null;
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="text-muted text-xs">
+                    Available: {formatTokenAmount(tb.balance, tb.token)}{tb.usdValue ? ` (${formatUSDValue(tb.usdValue)})` : ''}
+                  </span>
+                  <button className="btn btn-ghost btn-sm" style={{ fontSize: 12, padding: '4px 8px', height: 'auto', color: 'var(--primary-from)' }} onClick={() => setSendAmount(tb.formattedBalance)}>
+                    Max
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* Memo */}
+            <input className="input" placeholder="Add a note (optional)" value={sendMemo} onChange={e => setSendMemo(e.target.value)} style={{ fontSize: 14 }} />
+          </div>
+
+          {/* Burn address / self-send warnings */}
+          {sendTo && sendTo.toLowerCase() === '0x0000000000000000000000000000000000000000' && (
+            <p style={{ color: 'var(--danger)', fontSize: 12 }}>⚠️ This is a burn address — funds will be lost</p>
+          )}
+          {sendTo && sendTo.toLowerCase() === safe.address.toLowerCase() && (
+            <p style={{ color: 'var(--danger)', fontSize: 12 }}>⚠️ You're sending to your own wallet</p>
+          )}
+
+          <button className="btn btn-primary" disabled={!sendTo || !sendAmount} onClick={() => setShowReview(true)}>
+            Review
+          </button>
+        </>
+      )}
+
+      {/* Review card */}
+      {showReview && !txHash && (
+        <div className="card fade-in">
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Review Transaction</h3>
+          <div className="stack" style={{ gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="text-secondary text-sm">Sending</span>
+              <span style={{ fontWeight: 600 }}>
+                {sendAmount} {selectedToken.symbol}
+                {(() => {
+                  const tb = tokenBalances.find(b => b.token.address.toLowerCase() === selectedToken.address.toLowerCase());
+                  if (!tb || !tb.usdValue) return null;
+                  const ratio = tb.balance > 0n ? tb.usdValue / parseFloat(tb.formattedBalance) : 0;
+                  const usd = parseFloat(sendAmount) * ratio;
+                  return usd > 0 ? <span className="text-muted" style={{ fontWeight: 400 }}> ({formatUSDValue(usd)})</span> : null;
+                })()}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="text-secondary text-sm">To</span>
+              <span style={{ fontSize: 14, fontFamily: 'monospace' }}>{shortAddr(sendTo)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="text-secondary text-sm">Network fee</span>
+              <span style={{ fontSize: 14 }}>Sponsored ✨</span>
+            </div>
+            {sendMemo && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="text-secondary text-sm">Note</span>
+                <span className="text-sm">{sendMemo}</span>
+              </div>
+            )}
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <button className="btn btn-ghost btn-sm" style={{ marginBottom: 12 }} onClick={() => setShowReview(false)}>← Edit</button>
+            {threshold <= 1 ? (
+              <SlideToConfirm
+                label="Slide to send"
+                onConfirm={async () => { await handleSend(); }}
+              />
+            ) : (
+              <button className="btn btn-primary" onClick={handleSend} disabled={sendStatus === 'Signing…' || sendStatus === 'Executing…'}>
+                {sendStatus === 'Signing…' || sendStatus === 'Executing…' ? <><div className="spinner" /> {sendStatus}</> : 'Confirm & Sign'}
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {txHash && (
@@ -386,8 +460,8 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
             View on Explorer ↗
           </a>
           <div className="row" style={{ marginTop: 16 }}>
-            <button className="btn btn-secondary flex-1" onClick={() => { setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setShareUrl(''); }}>Send More</button>
-            <button className="btn btn-primary flex-1" onClick={() => { setView('home'); setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setShareUrl(''); setSelectedToken(NATIVE_TOKEN); }}>Go Home</button>
+            <button className="btn btn-secondary flex-1" onClick={() => { setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setSendMemo(''); setShareUrl(''); setShowReview(false); }}>Send More</button>
+            <button className="btn btn-primary flex-1" onClick={() => { setView('home'); setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setSendMemo(''); setShareUrl(''); setShowReview(false); setSelectedToken(NATIVE_TOKEN); }}>Go Home</button>
           </div>
         </div>
       )}

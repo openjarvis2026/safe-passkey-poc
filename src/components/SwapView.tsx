@@ -345,21 +345,21 @@ export default function SwapView({ safe, onBack }: Props) {
             </div>
             <div className="swap-quote-row">
               <span>You'll get at least</span>
-              <span>{(parseFloat(formattedQuote.amountOut) * (100 - slippage) / 100).toFixed(6)} {tokenTo.symbol}</span>
+              <span>{formatOutputAmount(String(parseFloat(formattedQuote.amountOut) * (100 - slippage) / 100), tokenTo.symbol)} {tokenTo.symbol}</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Swap Button */}
-      {threshold <= 1 ? (
+      {/* Swap Button — hidden after success */}
+      {!txHash && threshold <= 1 ? (
         <SlideToConfirm
           label="Slide to swap"
           disabled={!canSwap}
           onConfirm={handleSwap}
           testId="swap-slide"
         />
-      ) : (
+      ) : !txHash ? (
         <button 
           className="btn btn-primary" 
           onClick={handleSwap} 
@@ -374,7 +374,7 @@ export default function SwapView({ safe, onBack }: Props) {
             'Convert'
           )}
         </button>
-      )}
+      ) : null}
 
       {/* Success State */}
       {txHash && (
