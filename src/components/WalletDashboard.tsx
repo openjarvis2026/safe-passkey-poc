@@ -394,11 +394,15 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           </div>
 
           {/* Burn address / self-send warnings */}
-          {sendTo && sendTo.toLowerCase() === '0x0000000000000000000000000000000000000000' && (
-            <p style={{ color: 'var(--danger)', fontSize: 12 }}>⚠️ This is a burn address — funds will be lost</p>
+          {sendTo && sendTo.toLowerCase().startsWith('0x000000000000') && (
+            <div className="card" style={{ background: 'rgba(255,59,48,0.1)', border: '1px solid var(--danger)', padding: 12 }}>
+              <p style={{ color: 'var(--danger)', fontSize: 13, margin: 0 }}>⚠️ Warning: This appears to be a burn address. Funds sent here cannot be recovered.</p>
+            </div>
           )}
           {sendTo && sendTo.toLowerCase() === safe.address.toLowerCase() && (
-            <p style={{ color: 'var(--danger)', fontSize: 12 }}>⚠️ You're sending to your own wallet</p>
+            <div className="card" style={{ background: 'rgba(255,59,48,0.1)', border: '1px solid var(--danger)', padding: 12 }}>
+              <p style={{ color: 'var(--danger)', fontSize: 13, margin: 0 }}>⚠️ You're sending to your own wallet address.</p>
+            </div>
           )}
 
           <button className="btn btn-primary" disabled={!sendTo || !sendAmount} onClick={() => setShowReview(true)}>
@@ -446,6 +450,14 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
               <SlideToConfirm
                 label="Slide to send"
                 onConfirm={async () => { await handleSend(); }}
+                disabled={
+                  !sendTo || sendTo.length !== 42 || !sendTo.startsWith('0x') ||
+                  !sendAmount || parseFloat(sendAmount) <= 0 ||
+                  (() => {
+                    const tb = tokenBalances.find(b => b.token.address.toLowerCase() === selectedToken.address.toLowerCase());
+                    return tb ? parseFloat(sendAmount) > parseFloat(tb.formattedBalance) : true;
+                  })()
+                }
               />
             ) : (
               <button className="btn btn-primary" onClick={handleSend} disabled={sendStatus === 'Signing…' || sendStatus === 'Executing…'}>
