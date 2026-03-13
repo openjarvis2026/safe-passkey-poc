@@ -296,7 +296,7 @@ export default function SwapView({ safe, onBack }: Props) {
         </div>
 
         {/* Swap Direction Button */}
-        <div style={{ display: 'flex', justifyContent: 'center', margin: '-8px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0' }}>
           <button
             className="swap-direction-btn"
             onClick={handleSwapTokens}
@@ -331,7 +331,7 @@ export default function SwapView({ safe, onBack }: Props) {
               ) : formattedQuote ? (
                 <span>{formatOutputAmount(formattedQuote.amountOut, tokenTo.symbol)}</span>
               ) : (
-                <span style={{ color: 'var(--text-muted)' }}>0.0</span>
+                <span style={{ color: 'var(--text-muted)' }}>0</span>
               )}
             </div>
           </div>
