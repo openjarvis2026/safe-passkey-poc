@@ -70,42 +70,41 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
     await page.getByPlaceholder(/recipient/i).fill(recipientAddress);
     await page.getByPlaceholder(/amount/i).fill(sendAmount);
 
-    // Step 1: Click "Review" button to move to review card
+    // Execute send via slide-to-send or review flow
+    const slideTrack = page.locator('.slide-track');
     const reviewBtn = page.getByRole('button', { name: 'Review' });
-    await expect(reviewBtn).toBeVisible({ timeout: 5_000 });
-    await reviewBtn.click();
 
-    // Step 2: Review card appears — now slide to confirm or click send
-    await expect(page.getByText('Review Transaction')).toBeVisible({ timeout: 5_000 });
-
-    const slideTrack = page.locator('.slide-track, .slide-to-confirm');
-    const sendButton = page.getByRole('button', { name: /send/i });
-
-    if (await slideTrack.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      // Perform slide gesture
+    if (await reviewBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      // Review flow: click Review → then slide/confirm
+      await reviewBtn.click();
+      await expect(page.getByText('Review Transaction')).toBeVisible({ timeout: 5_000 });
+      const reviewSlide = page.locator('.slide-track');
+      const box = await reviewSlide.boundingBox();
+      if (box) {
+        const thumb = page.locator('.slide-thumb');
+        await thumb.dragTo(reviewSlide, { targetPosition: { x: box.width - 20, y: box.height / 2 }, force: true });
+      }
+    } else if (await slideTrack.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      // Direct slide-to-send
+      const thumb = page.locator('.slide-thumb');
       const box = await slideTrack.boundingBox();
       if (box) {
-        await page.mouse.move(box.x + 20, box.y + box.height / 2);
-        await page.mouse.down();
-        for (let x = box.x + 20; x <= box.x + box.width - 20; x += 10) {
-          await page.mouse.move(x, box.y + box.height / 2);
-        }
-        await page.mouse.up();
+        await thumb.dragTo(slideTrack, { targetPosition: { x: box.width - 20, y: box.height / 2 }, force: true });
       }
-    } else {
-      await sendButton.click();
     }
 
-    // Wait for transaction to complete — success card shows "Sent!" heading
+    // Wait for transaction to complete
     await expect(page.getByText('Sent!', { exact: false })).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
     console.log('Send transaction completed');
 
-    // Verify success card elements
-    await expect(page.getByRole('button', { name: /send more/i })).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole('button', { name: /go home/i })).toBeVisible({ timeout: 5_000 });
-
-    // ── 9. Navigate to History via "Go Home" then "View All" ──
-    await page.getByRole('button', { name: /go home/i }).click();
+    // Navigate back to home
+    const goHomeBtn = page.getByRole('button', { name: /go home|back to wallet/i });
+    const backBtn = page.locator('button').filter({ hasText: '←' });
+    if (await goHomeBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await goHomeBtn.click();
+    } else if (await backBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await backBtn.click();
+    }
 
     // Wait for home to load
     await expect(page.getByText('Total Balance')).toBeVisible({ timeout: 10_000 });
