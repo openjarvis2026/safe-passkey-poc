@@ -140,7 +140,7 @@ export default function ApproveTransaction({ encodedData }: Props) {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span className="text-secondary text-sm">Value</span>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>{formatEther(BigInt(tx.value))} ETH</span>
+            <span style={{ fontSize: 20, fontWeight: 700 }}>{formatEther(BigInt(tx.value))} ETH</span>
           </div>
           {tx.data !== '0x' && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

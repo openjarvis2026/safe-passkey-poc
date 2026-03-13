@@ -77,8 +77,8 @@ export default function SlideToConfirm({ onConfirm, label = 'Slide to approve', 
   const trackBg = state === 'success'
     ? 'var(--success)'
     : state === 'dragging' || state === 'confirming'
-    ? `linear-gradient(90deg, var(--primary-from) ${progress * 100}%, #1E293B ${progress * 100}%)`
-    : '#1E293B';
+    ? `linear-gradient(90deg, var(--primary-from) ${progress * 100}%, var(--text-primary) ${progress * 100}%)`
+    : 'var(--text-primary)';
 
   const displayText = state === 'confirming' ? statusText
     : state === 'success' ? '✅ Done!'
@@ -98,7 +98,7 @@ export default function SlideToConfirm({ onConfirm, label = 'Slide to approve', 
       onTouchEnd={onTouchEnd}
     >
       {/* Label */}
-      <div className={`slide-label ${state === 'idle' ? 'slide-shimmer' : ''}`} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15, fontWeight: 600, pointerEvents: 'none', opacity: state === 'dragging' ? 1 - progress * 0.5 : 1 }}>
+      <div className={`slide-label ${state === 'idle' ? 'slide-shimmer' : ''}`} style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 600, pointerEvents: 'none', opacity: state === 'dragging' ? 1 - progress * 0.5 : 1 }}>
         {displayText}
       </div>
 
@@ -110,7 +110,7 @@ export default function SlideToConfirm({ onConfirm, label = 'Slide to approve', 
           onMouseDown={onMouseDown}
           onTouchStart={onTouchStart}
         >
-          <span style={{ fontSize: 22, color: '#1E293B' }}>→</span>
+          <span style={{ fontSize: 22, color: 'var(--text-primary)' }}>→</span>
         </div>
       ) : state === 'confirming' ? (
         <div style={{ position: 'absolute', top: (trackHeight - thumbSize) / 2, right: 6, width: thumbSize, height: thumbSize, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>

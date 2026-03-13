@@ -192,7 +192,7 @@ export default function JoinWallet({ safeAddress, onJoined }: Props) {
         <div className="card fade-in">
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>✅</div>
-            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Your device is ready!</h3>
+            <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Your device is ready!</h3>
             <p className="text-secondary text-sm">
               Your passkey has been created and your device signer is deployed.
             </p>

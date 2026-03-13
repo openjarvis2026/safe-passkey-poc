@@ -287,7 +287,7 @@ export default function SwapView({ safe, onBack }: Props) {
             </div>
             <div className="swap-quote-row">
               <span>Protocol Fee (0.5%)</span>
-              <span>{parseFloat(formattedQuote.feeAmount).toFixed(6)} {tokenFrom.symbol}</span>
+              <span>{(() => { const fee = parseFloat(formattedQuote.feeAmount); return fee > 0 && fee < 0.000001 ? '< 0.000001' : fee.toFixed(6); })()} {tokenFrom.symbol}</span>
             </div>
             <div className="swap-quote-row">
               <span>Price Impact</span>

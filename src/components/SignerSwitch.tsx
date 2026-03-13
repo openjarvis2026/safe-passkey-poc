@@ -116,10 +116,10 @@ export default function SignerSwitch({ safe, onBack }: Props) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
             <div>
-              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: '#92400E' }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--warning-dark)' }}>
                 Important
               </h3>
-              <p style={{ fontSize: 13, color: '#92400E', lineHeight: 1.4 }}>
+              <p style={{ fontSize: 13, color: 'var(--warning-dark)', lineHeight: 1.4 }}>
                 Switching signers will replace your current Passkey with a Ledger device. 
                 Make sure you have access to your Ledger and remember your PIN before proceeding.
               </p>
@@ -135,7 +135,7 @@ export default function SignerSwitch({ safe, onBack }: Props) {
       <div className="fade-in stack-lg">
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <div className="spinner spinner-dark" style={{ width: 40, height: 40, marginBottom: 16 }} />
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Generating Transaction</h3>
+          <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Generating Transaction</h3>
           <p className="text-muted">Creating Safe transaction to swap signers...</p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export default function SignerSwitch({ safe, onBack }: Props) {
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Signer Swap Transaction</h3>
           
           <div className="stack">
-            <div style={{ padding: 12, background: 'var(--bg)', borderRadius: 8 }}>
+            <div style={{ padding: 12, background: 'var(--bg)', borderRadius: 'var(--radius-md)' }}>
               <p className="text-muted text-sm" style={{ marginBottom: 4 }}>From:</p>
               <p style={{ fontSize: 14, fontWeight: 500 }}>🔑 Passkey Signer</p>
               <p className="text-xs" style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>
@@ -172,10 +172,10 @@ export default function SignerSwitch({ safe, onBack }: Props) {
             
             <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>↓</div>
             
-            <div style={{ padding: 12, background: 'var(--success-light)', borderRadius: 8 }}>
+            <div style={{ padding: 12, background: 'var(--success-light)', borderRadius: 'var(--radius-md)' }}>
               <p className="text-muted text-sm" style={{ marginBottom: 4 }}>To:</p>
-              <p style={{ fontSize: 14, fontWeight: 500, color: '#065F46' }}>💎 Ledger Signer</p>
-              <p className="text-xs" style={{ fontFamily: 'monospace', color: '#059669' }}>
+              <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--success-dark)' }}>💎 Ledger Signer</p>
+              <p className="text-xs" style={{ fontFamily: 'monospace', color: 'var(--success)' }}>
                 0x1234...7890 (placeholder)
               </p>
             </div>
@@ -199,7 +199,7 @@ export default function SignerSwitch({ safe, onBack }: Props) {
         {/* Coming Soon */}
         <div className="card" style={{ textAlign: 'center', background: 'var(--bg)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🚧</div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Ledger Connection Coming Soon</h3>
+          <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Ledger Connection Coming Soon</h3>
           <p className="text-muted text-sm" style={{ marginBottom: 16 }}>
             The transaction has been encoded and is ready to execute. 
             Ledger device connection and signing will be available in the next release.

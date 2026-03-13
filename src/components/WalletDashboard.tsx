@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { formatEther, parseEther, parseAbiItem, parseUnits } from 'viem';
+import { formatEther, parseUnits } from 'viem';
 import QRCode from 'qrcode';
 import { publicClient, EXPLORER } from '../lib/relayer';
 import SlideToConfirm from './shared/SlideToConfirm';
@@ -7,9 +7,10 @@ import TokenList from './TokenList';
 import TokenSelector from './TokenSelector';
 import SafeSelector from './SafeSelector';
 import TransactionHistory from './TransactionHistory';
+import TransactionItem from './TransactionItem';
 import SwapView from './SwapView';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
-import { cacheLocalTransaction } from '../lib/history';
+import { cacheLocalTransaction, fetchTransactionHistory } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { type SavedSafe, saveSafe, clearSafe, base64ToArrayBuffer } from '../lib/storage';
@@ -27,14 +28,6 @@ interface Props {
   safe: SavedSafe;
   onDisconnect: () => void;
   onSafeChanged: (safe: SavedSafe | null) => void;
-}
-
-function timeAgo(timestamp: number): string {
-  const seconds = Math.floor(Date.now() / 1000 - timestamp);
-  if (seconds < 60) return 'Just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
 }
 
 const COLORS = ['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6'];
@@ -67,8 +60,8 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
 
   // Removed add owner state - now using InviteSigner component
 
-  // Transaction history
-  const [txHistory, setTxHistory] = useState<Array<{ hash: string; timestamp: number; value: bigint }>>([]);
+  // Transaction history (recent activity)
+  const [recentTxs, setRecentTxs] = useState<SafeTransaction[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
   const localOwner = safe.owners.find(o => o.credentialId);
@@ -86,24 +79,10 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         setBalance(b);
         setOwners(o);
         setThreshold(Number(t));
-        // Fetch tx history
+        // Fetch recent transactions
         try {
-          const logs = await publicClient.getLogs({
-            address: safe.address,
-            event: parseAbiItem('event ExecutionSuccess(bytes32 txHash, uint256 payment)'),
-            fromBlock: 'earliest',
-            toBlock: 'latest',
-          });
-          const txs = await Promise.all(
-            logs.slice(-10).reverse().map(async (log) => {
-              const [block, txData] = await Promise.all([
-                publicClient.getBlock({ blockNumber: log.blockNumber }),
-                publicClient.getTransaction({ hash: log.transactionHash }),
-              ]);
-              return { hash: log.transactionHash, timestamp: Number(block.timestamp), value: txData.value };
-            })
-          );
-          setTxHistory(txs);
+          const txs = await fetchTransactionHistory(safe.address, 5);
+          setRecentTxs(txs);
         } catch {}
         setHistoryLoading(false);
       } catch {}
@@ -246,9 +225,6 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         <button className="btn btn-secondary flex-1" onClick={() => setView('swap')}>
           ↔ Swap
         </button>
-        <button className="btn btn-secondary flex-1" onClick={() => setView('history')}>
-          📜 History
-        </button>
       </div>
 
       {/* Token List */}
@@ -294,32 +270,31 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       </div>
 
       {/* Recent Activity */}
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <span>📜</span>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>Recent Activity</h3>
+          {recentTxs.length > 0 && (
+            <button 
+              className="btn btn-ghost btn-sm" 
+              style={{ width: 'auto', fontSize: 13, padding: '6px 12px', color: 'var(--primary-from)' }}
+              onClick={() => setView('history')}
+            >
+              View All →
+            </button>
+          )}
         </div>
         {historyLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+          <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
             <div className="spinner spinner-dark" style={{ width: 20, height: 20 }} />
           </div>
-        ) : txHistory.length === 0 ? (
-          <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No transactions yet</p>
+        ) : recentTxs.length === 0 ? (
+          <div className="card">
+            <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No transactions yet</p>
+          </div>
         ) : (
           <div>
-            {txHistory.map(tx => (
-              <div key={tx.hash} className="tx-history-item">
-                <span style={{ color: 'var(--success)', fontSize: 14 }}>✅</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <a href={`${EXPLORER}/tx/${tx.hash}`} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--primary-from)' }}>
-                    {tx.hash.slice(0, 10)}…{tx.hash.slice(-6)}
-                  </a>
-                  {tx.value > 0n && (
-                    <span className="text-sm" style={{ marginLeft: 8, fontWeight: 600 }}>{formatEther(tx.value)} ETH</span>
-                  )}
-                </div>
-                <span className="text-muted text-xs">{timeAgo(tx.timestamp)}</span>
-              </div>
+            {recentTxs.slice(0, 5).map(tx => (
+              <TransactionItem key={tx.txHash} transaction={tx} />
             ))}
           </div>
         )}

@@ -272,7 +272,7 @@ export default function InviteSigner({ safe, onBack }: Props) {
           <div className="card invite-card text-center">
             <div className="mb-8">
               <div style={{ fontSize: 32, marginBottom: 8 }}>📱</div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Scan to Join</h3>
+              <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Scan to Join</h3>
               <p className="text-secondary text-sm">
                 New signer can scan this code or use the link below
               </p>
@@ -314,7 +314,7 @@ export default function InviteSigner({ safe, onBack }: Props) {
           <div className="card">
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Enter New Signer Address</h3>
+              <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Enter New Signer Address</h3>
               <p className="text-secondary text-sm">
                 Once the new signer completes setup on their device, they'll see their signer address. Ask them to share it with you and paste it below.
               </p>
@@ -333,7 +333,7 @@ export default function InviteSigner({ safe, onBack }: Props) {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  borderRadius: 12,
+                  borderRadius: 'var(--radius-lg)',
                   border: manualError ? '1px solid var(--danger)' : '1px solid var(--border)',
                   background: 'var(--bg-secondary, #f1f5f9)',
                   fontSize: 14,
@@ -385,7 +385,7 @@ export default function InviteSigner({ safe, onBack }: Props) {
           <div className="card">
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Confirm New Signer</h3>
+              <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Confirm New Signer</h3>
               <p className="text-secondary text-sm">
                 Review the address below. Only approve if this is the person you invited.
               </p>
@@ -442,7 +442,7 @@ export default function InviteSigner({ safe, onBack }: Props) {
       {phase === 'adding' && (
         <div className="card text-center">
           <div className="spinner spinner-dark" style={{ width: 32, height: 32, margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Adding signer...</h3>
+          <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Adding signer...</h3>
           <p className="text-secondary text-sm">
             Signing and executing the transaction to add the new signer.
           </p>
@@ -453,7 +453,7 @@ export default function InviteSigner({ safe, onBack }: Props) {
       {phase === 'done' && (
         <div className="card text-center">
           <div style={{ fontSize: 32, marginBottom: 12 }}>✅</div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Signer Added!</h3>
+          <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Signer Added!</h3>
           <p className="text-secondary text-sm mb-8">
             The new signer has been successfully added to your wallet.
           </p>

@@ -36,7 +36,7 @@ export default function TokenSelector({ safeAddress, selectedToken, onSelect, on
     <div className="token-selector-overlay">
       <div className="token-selector-modal">
         <div className="token-selector-header">
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Select Token</h3>
+          <h3 style={{ fontSize: 20, fontWeight: 600 }}>Select Token</h3>
           <button 
             className="btn btn-icon" 
             style={{ width: 32, height: 32, fontSize: 16 }}

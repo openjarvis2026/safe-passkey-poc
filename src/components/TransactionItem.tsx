@@ -89,7 +89,7 @@ export default function TransactionItem({ transaction, onResend }: Props) {
         
         {/* Middle: title + subtitle */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {getTransactionTitle()}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
@@ -101,9 +101,9 @@ export default function TransactionItem({ transaction, onResend }: Props) {
               fontSize: '11px',
               fontWeight: 600,
               padding: '1px 6px',
-              borderRadius: '6px',
+              borderRadius: 'var(--radius-sm)',
               backgroundColor: status === 'confirmed' ? 'rgba(52, 199, 89, 0.15)' : status === 'pending' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 59, 48, 0.15)',
-              color: status === 'confirmed' ? 'var(--success)' : status === 'pending' ? '#F59E0B' : 'var(--danger)'
+              color: status === 'confirmed' ? 'var(--success)' : status === 'pending' ? 'var(--warning)' : 'var(--danger)'
             }}>
               {status === 'confirmed' ? 'Confirmed' : status === 'pending' ? 'Pending' : 'Failed'}
             </span>
@@ -114,7 +114,7 @@ export default function TransactionItem({ transaction, onResend }: Props) {
         {hasAmount && (
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ 
-              fontSize: '15px', 
+              fontSize: '14px', 
               fontWeight: 700, 
               color: amountColor
             }}>
@@ -143,7 +143,7 @@ export default function TransactionItem({ transaction, onResend }: Props) {
               color: 'var(--text-secondary)',
               background: 'rgba(248, 250, 252, 0.8)',
               border: '1px solid rgba(226, 232, 240, 0.8)',
-              borderRadius: '8px'
+              borderRadius: 'var(--radius-md)'
             }}
             onClick={() => onResend(transaction)}
           >

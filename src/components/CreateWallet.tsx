@@ -70,7 +70,7 @@ export default function CreateWallet({ onSafeCreated }: Props) {
       <div>
         <div style={{ fontSize: 64, marginBottom: 16 }}>🔐</div>
         <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Passkey Wallet</h1>
-        <p className="text-secondary" style={{ fontSize: 15 }}>
+        <p className="text-secondary" style={{ fontSize: 14 }}>
           Secured by Face ID • Powered by Safe
         </p>
       </div>
@@ -88,7 +88,7 @@ export default function CreateWallet({ onSafeCreated }: Props) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
             {phase !== 'done' && <div className="spinner spinner-dark" />}
-            <span className="text-secondary" style={{ fontSize: 15, fontWeight: 500 }}>
+            <span className="text-secondary" style={{ fontSize: 14, fontWeight: 500 }}>
               {STEPS.find(s => s.phase === phase)?.label}
             </span>
           </div>

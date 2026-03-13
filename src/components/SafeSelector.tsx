@@ -43,7 +43,7 @@ export default function SafeSelector({ currentSafe, onSafeChanged }: Props) {
             zIndex: 1000,
             background: 'var(--card-bg)',
             border: '1px solid var(--border-color)',
-            borderRadius: 12,
+            borderRadius: 'var(--radius-lg)',
             padding: 4,
             minWidth: 140,
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
@@ -57,7 +57,7 @@ export default function SafeSelector({ currentSafe, onSafeChanged }: Props) {
                 border: 'none',
                 textAlign: 'left',
                 fontSize: 14,
-                borderRadius: 8,
+                borderRadius: 'var(--radius-md)',
                 cursor: 'pointer'
               }}
               onClick={() => {
@@ -86,7 +86,7 @@ export default function SafeSelector({ currentSafe, onSafeChanged }: Props) {
           padding: '8px 12px',
           background: 'var(--card-bg)',
           border: '1px solid var(--border-color)',
-          borderRadius: 20,
+          borderRadius: 'var(--radius-full)',
           cursor: 'pointer',
           fontSize: 14,
           fontWeight: 500,
@@ -113,7 +113,7 @@ export default function SafeSelector({ currentSafe, onSafeChanged }: Props) {
           marginTop: 8,
           background: 'var(--card-bg)',
           border: '1px solid var(--border-color)',
-          borderRadius: 16,
+          borderRadius: 'var(--radius-xl)',
           padding: 8,
           zIndex: 1000,
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
@@ -133,7 +133,7 @@ export default function SafeSelector({ currentSafe, onSafeChanged }: Props) {
                 padding: '12px',
                 background: safe.address === currentSafe.address ? 'var(--primary-bg)' : 'none',
                 border: 'none',
-                borderRadius: 12,
+                borderRadius: 'var(--radius-lg)',
                 cursor: 'pointer',
                 fontSize: 14,
                 textAlign: 'left',
@@ -178,7 +178,7 @@ export default function SafeSelector({ currentSafe, onSafeChanged }: Props) {
               border: 'none',
               textAlign: 'left',
               fontSize: 14,
-              borderRadius: 8,
+              borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
               color: 'var(--warning-color)',
               marginBottom: 4
@@ -201,7 +201,7 @@ export default function SafeSelector({ currentSafe, onSafeChanged }: Props) {
               border: 'none',
               textAlign: 'left',
               fontSize: 14,
-              borderRadius: 8,
+              borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
               color: 'var(--error-color)'
             }}
