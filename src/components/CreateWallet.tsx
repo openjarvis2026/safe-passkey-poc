@@ -70,27 +70,29 @@ export default function CreateWallet({ onSafeCreated }: Props) {
       <div>
         <div style={{ fontSize: 64, marginBottom: 16 }}>🔐</div>
         <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Passkey Wallet</h1>
-        <p className="text-secondary" style={{ fontSize: 14 }}>
-          Secured by Face ID • Powered by Safe
+        <p className="text-secondary" style={{ fontSize: 16, lineHeight: 1.5 }}>
+          Send and receive money with just your fingerprint
         </p>
       </div>
 
       {/* Progress */}
       {isWorking && (
         <div className="card fade-in" style={{ width: '100%' }}>
-          <div className="progress-dots" style={{ marginBottom: 20 }}>
-            {STEPS.map((s, i) => (
-              <div
-                key={s.phase}
-                className={`progress-dot ${i < currentIdx ? 'done' : i === currentIdx ? 'active' : ''}`}
-              />
-            ))}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            {phase !== 'done' && <div className="spinner spinner-dark" />}
-            <span className="text-secondary" style={{ fontSize: 14, fontWeight: 500 }}>
-              {STEPS.find(s => s.phase === phase)?.label}
-            </span>
+          <div className="stack" style={{ gap: 12 }}>
+            {STEPS.map((s, i) => {
+              const isDone = i < currentIdx;
+              const isActive = i === currentIdx;
+              return (
+                <div key={s.phase} style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: !isDone && !isActive ? 0.4 : 1, transition: 'opacity 0.3s' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600, background: isDone ? 'var(--success)' : isActive ? 'var(--primary-from)' : 'var(--border)', color: isDone || isActive ? '#fff' : 'var(--text-muted)' }}>
+                    {isDone ? '✓' : isActive ? <div className="spinner" style={{ width: 16, height: 16 }} /> : i + 1}
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: isActive ? 600 : 400, color: isDone ? 'var(--success)' : isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -108,9 +110,18 @@ export default function CreateWallet({ onSafeCreated }: Props) {
       {/* CTA */}
       <div style={{ width: '100%' }}>
         {phase === 'idle' && (
-          <button className="btn btn-primary" onClick={handleCreate}>
-            Get Started
-          </button>
+          <>
+            <button className="btn btn-primary" onClick={handleCreate}>
+              Get Started
+            </button>
+            <button 
+              className="btn btn-ghost" 
+              style={{ marginTop: 12, fontSize: 14 }}
+              onClick={() => { window.location.hash = '#/join'; }}
+            >
+              I already have a wallet
+            </button>
+          </>
         )}
         {phase === 'error' && (
           <button className="btn btn-primary" onClick={handleCreate}>

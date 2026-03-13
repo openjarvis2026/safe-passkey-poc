@@ -8,7 +8,6 @@ interface Props {
 export default function TokenList({ safeAddress }: Props) {
   const [balances, setBalances] = useState<TokenBalance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<number>(0);
 
   // Fetch token balances
   useEffect(() => {
@@ -17,7 +16,6 @@ export default function TokenList({ safeAddress }: Props) {
         setLoading(true);
         const tokenBalances = await getTokenBalances(safeAddress);
         setBalances(tokenBalances);
-        setLastUpdated(Date.now());
       } catch (error) {
         console.error('Error fetching token balances:', error);
       } finally {
@@ -96,16 +94,7 @@ export default function TokenList({ safeAddress }: Props) {
         })}
       </div>
 
-      {lastUpdated > 0 && (
-        <div style={{ 
-          textAlign: 'center', 
-          marginTop: 12, 
-          fontSize: 11, 
-          color: 'var(--text-muted)' 
-        }}>
-          Last updated: {new Date(lastUpdated).toLocaleTimeString()}
-        </div>
-      )}
+      {/* Removed "Last updated" — unnecessary for end users */}
     </div>
   );
 }

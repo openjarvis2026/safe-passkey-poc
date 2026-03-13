@@ -340,7 +340,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
             className="send-token-selector"
             onClick={() => setShowTokenSelector(true)}
           >
-            <span style={{ fontSize: 18 }}>
+            <span style={{ fontSize: 20 }}>
               {selectedToken.symbol === 'ETH' && '⚡'}
               {selectedToken.symbol === 'USDC' && '💙'}
               {selectedToken.symbol === 'USDT' && '💚'}
@@ -372,10 +372,26 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         </button>
       )}
 
-      {sendStatus && sendStatus !== 'Signing…' && sendStatus !== 'Executing…' && (
+      {txHash && (
+        <div className="card fade-in" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+          <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Sent!</p>
+          <p className="text-secondary" style={{ fontSize: 14, marginBottom: 4 }}>
+            {sendAmount} {selectedToken.symbol} → {shortAddr(sendTo)}
+          </p>
+          <a href={`${EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-from)', fontSize: 14 }}>
+            View on Explorer ↗
+          </a>
+          <div className="row" style={{ marginTop: 16 }}>
+            <button className="btn btn-secondary flex-1" onClick={() => { setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setShareUrl(''); }}>Send More</button>
+            <button className="btn btn-primary flex-1" onClick={() => { setView('home'); setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setShareUrl(''); setSelectedToken(NATIVE_TOKEN); }}>Go Home</button>
+          </div>
+        </div>
+      )}
+
+      {sendStatus && sendStatus !== 'Signing…' && sendStatus !== 'Executing…' && !txHash && (
         <div className="card fade-in">
           <p style={{ fontSize: 14, marginBottom: 8 }}>{sendStatus}</p>
-          {txHash && <a href={`${EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-from)', fontSize: 14 }}>View transaction ↗</a>}
         </div>
       )}
 

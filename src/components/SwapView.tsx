@@ -3,6 +3,7 @@ import { type SavedSafe } from '../lib/storage';
 import { type Token, NATIVE_TOKEN, TOKENS } from '../lib/tokens';
 import { getSwapQuote, encodeSwapTransaction, formatSwapQuote, type SwapQuote } from '../lib/swap';
 import { getNonce, execTransaction } from '../lib/safe';
+import { EXPLORER } from '../lib/relayer';
 import { savePendingTransaction } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
@@ -335,20 +336,32 @@ export default function SwapView({ safe, onBack }: Props) {
         </button>
       )}
 
-      {/* Status */}
-      {swapStatus && !swapStatus.includes('...') && (
+      {/* Success State */}
+      {txHash && (
+        <div className="card fade-in" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+          <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Swap Complete!</p>
+          <p className="text-secondary" style={{ fontSize: 14, marginBottom: 4 }}>
+            {amountIn} {tokenFrom.symbol} → {formattedQuote ? parseFloat(formattedQuote.amountOut).toFixed(6) : '?'} {tokenTo.symbol}
+          </p>
+          <a 
+            href={`${EXPLORER}/tx/${txHash}`} 
+            target="_blank" 
+            rel="noreferrer" 
+            style={{ color: 'var(--primary-from)', fontSize: 14 }}
+          >
+            View on Explorer ↗
+          </a>
+          <div style={{ marginTop: 16 }}>
+            <button className="btn btn-primary" onClick={() => { onBack(); resetSwap(); }}>Done</button>
+          </div>
+        </div>
+      )}
+
+      {/* Status (non-success) */}
+      {swapStatus && !swapStatus.includes('...') && !txHash && (
         <div className="card fade-in">
           <p style={{ fontSize: 14, marginBottom: 8 }}>{swapStatus}</p>
-          {txHash && (
-            <a 
-              href={`https://sepolia.basescan.org/tx/${txHash}`} 
-              target="_blank" 
-              rel="noreferrer" 
-              style={{ color: 'var(--primary-from)', fontSize: 14 }}
-            >
-              View transaction ↗
-            </a>
-          )}
         </div>
       )}
 
