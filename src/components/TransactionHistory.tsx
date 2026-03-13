@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { type SafeTransaction, fetchTransactionHistory } from '../lib/history';
+import { type SafeTransaction, fetchTransactionHistory, type PendingTransaction, getPendingTransactions, cleanupExecutedPendingTxs } from '../lib/history';
 import { TOKENS, type Token, NATIVE_TOKEN } from '../lib/tokens';
 import TransactionItem from './TransactionItem';
+import PendingTransactionItem from './PendingTransactionItem';
 
 interface Props {
   safeAddress: `0x${string}`;
@@ -29,6 +30,7 @@ function getTokenIcon(symbol: string): string {
 
 export default function TransactionHistory({ safeAddress, onBack, onResend }: Props) {
   const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
+  const [pendingTxs, setPendingTxs] = useState<PendingTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [selectedFilter, setSelectedFilter] = useState<FilterOption>('all');
@@ -42,9 +44,13 @@ export default function TransactionHistory({ safeAddress, onBack, onResend }: Pr
       try {
         const txs = await fetchTransactionHistory(safeAddress);
         setTransactions(txs);
+        // Auto-cleanup pending txs whose nonce has been executed
+        cleanupExecutedPendingTxs(safeAddress, new Set<string>());
+        setPendingTxs(getPendingTransactions(safeAddress));
       } catch (err: any) {
         console.error('Failed to fetch transaction history:', err);
         setError(err.message || 'Failed to load transaction history');
+        setPendingTxs(getPendingTransactions(safeAddress));
       } finally {
         setLoading(false);
       }
@@ -168,6 +174,16 @@ export default function TransactionHistory({ safeAddress, onBack, onResend }: Pr
         </div>
       ) : (
         <div className="transaction-list">
+          {pendingTxs.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', paddingLeft: '4px' }}>
+                ⏳ Pending
+              </div>
+              {pendingTxs.map(ptx => (
+                <PendingTransactionItem key={ptx.id} pendingTx={ptx} />
+              ))}
+            </div>
+          )}
           {filteredTransactions.map(tx => (
             <TransactionItem key={tx.txHash} transaction={tx} onResend={onResend} />
           ))}

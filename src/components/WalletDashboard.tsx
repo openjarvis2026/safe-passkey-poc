@@ -10,7 +10,7 @@ import TransactionHistory from './TransactionHistory';
 import TransactionItem from './TransactionItem';
 import SwapView from './SwapView';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
-import { cacheLocalTransaction, fetchTransactionHistory } from '../lib/history';
+import { cacheLocalTransaction, fetchTransactionHistory, savePendingTransaction } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { type SavedSafe, saveSafe, clearSafe, base64ToArrayBuffer } from '../lib/storage';
@@ -160,6 +160,14 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         const encoded = encodeShareableTransaction(shareable);
         const url = `${window.location.origin}${window.location.pathname}#/sign?data=${encoded}`;
         setShareUrl(url);
+        savePendingTransaction(safe.address, {
+          id: `${safe.address}-${nonce}-${Date.now()}`,
+          to, value: value.toString(), data,
+          token: selectedToken,
+          nonce: nonce.toString(),
+          createdAt: new Date().toISOString(),
+          threshold, signatureCount: 1, shareUrl: url,
+        });
         setSendStatus(`Signed (1/${threshold}). Share with other devices.`);
       }
     } catch (e: any) {

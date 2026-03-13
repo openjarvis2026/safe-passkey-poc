@@ -603,6 +603,66 @@ function getLocalTransactions(safeAddress: `0x${string}`): SafeTransaction[] {
   }
 }
 
+// ── Pending transaction tracking ──
+
+export interface PendingTransaction {
+  id: string;
+  to: string;
+  value: string;
+  data: string;
+  token: Token;
+  nonce: string;
+  createdAt: string;
+  threshold: number;
+  signatureCount: number;
+  shareUrl: string;
+}
+
+function pendingTxKey(safeAddress: string): string {
+  return `pending_txs_${safeAddress.toLowerCase()}`;
+}
+
+export function savePendingTransaction(safeAddress: string, pendingTx: PendingTransaction): void {
+  try {
+    const existing = getPendingTransactions(safeAddress);
+    const filtered = existing.filter(tx => tx.id !== pendingTx.id);
+    filtered.push(pendingTx);
+    localStorage.setItem(pendingTxKey(safeAddress), JSON.stringify(filtered));
+  } catch (e) {
+    console.warn('Failed to save pending transaction:', e);
+  }
+}
+
+export function getPendingTransactions(safeAddress: string): PendingTransaction[] {
+  try {
+    return JSON.parse(localStorage.getItem(pendingTxKey(safeAddress)) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function removePendingTransaction(safeAddress: string, id: string): void {
+  try {
+    const existing = getPendingTransactions(safeAddress);
+    const filtered = existing.filter(tx => tx.id !== id);
+    localStorage.setItem(pendingTxKey(safeAddress), JSON.stringify(filtered));
+  } catch (e) {
+    console.warn('Failed to remove pending transaction:', e);
+  }
+}
+
+export function cleanupExecutedPendingTxs(safeAddress: string, confirmedNonces: Set<string>): void {
+  try {
+    const pending = getPendingTransactions(safeAddress);
+    const remaining = pending.filter(tx => !confirmedNonces.has(tx.nonce));
+    if (remaining.length !== pending.length) {
+      localStorage.setItem(pendingTxKey(safeAddress), JSON.stringify(remaining));
+    }
+  } catch (e) {
+    console.warn('Failed to cleanup pending transactions:', e);
+  }
+}
+
 // Format relative time (e.g., "2h ago", "3d ago")
 export function formatRelativeTime(timestamp: string): string {
   const now = Date.now();
