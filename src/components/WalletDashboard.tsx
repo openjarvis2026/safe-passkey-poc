@@ -20,7 +20,7 @@ import {
   encodeShareableTransaction,
   packSingleSignerData,
 } from '../lib/multisig';
-import { NATIVE_TOKEN, type Token, formatTokenAmount, getTokenBalances, type TokenBalance } from '../lib/tokens';
+import { NATIVE_TOKEN, type Token, formatTokenAmount, formatUSDValue, getTokenBalances, type TokenBalance } from '../lib/tokens';
 import { type SafeTransaction } from '../lib/history';
 
 type View = 'home' | 'send' | 'receive' | 'add-owner' | 'history' | 'swap';
@@ -225,7 +225,17 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       {/* Balance Card */}
       <div className="card-gradient" style={{ textAlign: 'center' }}>
         <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 4 }}>Total Balance</p>
-        <p style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}>{formatEther(balance)} ETH</p>
+        {(() => {
+          const totalUSD = tokenBalances.reduce((sum, b) => sum + (b.usdValue || 0), 0);
+          return totalUSD > 0 ? (
+            <>
+              <p style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}>{formatUSDValue(totalUSD)}</p>
+              <p style={{ fontSize: 14, opacity: 0.7, marginTop: 4 }}>{formatEther(balance)} ETH</p>
+            </>
+          ) : (
+            <p style={{ fontSize: 40, fontWeight: 700, lineHeight: 1.1 }}>{formatEther(balance)} ETH</p>
+          );
+        })()}
       </div>
 
       {/* Action Buttons */}
