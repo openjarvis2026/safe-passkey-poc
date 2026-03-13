@@ -846,3 +846,193 @@ body {
   align-items: center;
   gap: 8px;
 }
+
+/* ---- Swap Styles ---- */
+.swap-token-section {
+  margin-bottom: 16px;
+}
+
+.swap-section-header {
+  margin-bottom: 8px;
+}
+
+.swap-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.swap-token-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+  min-width: 140px;
+}
+
+.swap-token-selector:hover {
+  border-color: var(--primary-from);
+  background: var(--card-bg);
+}
+
+.swap-token-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.swap-token-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.swap-token-symbol {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.swap-token-name {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.swap-dropdown-arrow {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.swap-amount-input {
+  flex: 1;
+  padding: 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 18px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  text-align: right;
+}
+
+.swap-amount-input:focus {
+  border-color: var(--primary-from);
+}
+
+.swap-amount-input::placeholder {
+  color: var(--text-muted);
+}
+
+.swap-amount-output {
+  flex: 1;
+  padding: 16px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 52px;
+}
+
+.swap-direction-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.swap-direction-btn:hover {
+  background: var(--primary-from);
+  color: white;
+  border-color: var(--primary-from);
+  transform: rotate(180deg);
+}
+
+.swap-direction-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.swap-quote-details {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.swap-quote-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.swap-quote-row:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  padding-bottom: 10px;
+}
+
+.swap-quote-row span:first-child {
+  color: var(--text-secondary);
+}
+
+.swap-quote-row span:last-child {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Responsive adjustments for swap */
+@media (max-width: 400px) {
+  .swap-input-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .swap-token-selector,
+  .swap-amount-input,
+  .swap-amount-output {
+    width: 100%;
+  }
+  
+  .swap-amount-input {
+    text-align: center;
+  }
+  
+  .swap-amount-output {
+    justify-content: center;
+  }
+}
