@@ -438,7 +438,7 @@ const TRANSFER_EVENT_ABI = {
 } as const;
 
 // Number of recent blocks to scan for on-chain events
-const ON_CHAIN_BLOCK_RANGE = 5000n;
+const ON_CHAIN_BLOCK_RANGE = 2000n;
 
 // Fetch transactions directly from on-chain Transfer events
 async function fetchOnChainTransactions(
@@ -533,41 +533,10 @@ async function fetchOnChainTransactions(
     });
   }
 
-  // Check for outgoing native ETH transfers by scanning recent blocks for txs from the Safe
-  // This catches native ETH sends that won't appear in Transfer events
-  // We check a smaller range to avoid excessive RPC calls
-  const ethScanRange = currentBlock > 1000n ? currentBlock - 1000n : 0n;
-  try {
-    // Use eth_getLogs won't work for native transfers, so we check transaction receipts
-    // Instead, scan blocks for transactions from the Safe address
-    // To limit RPC calls, we only check the most recent 100 blocks
-    const ethFromBlock = currentBlock > 100n ? currentBlock - 100n : 0n;
-    for (let bn = currentBlock; bn > ethFromBlock; bn--) {
-      const block = await publicClient.getBlock({ blockNumber: bn, includeTransactions: true });
-      blockCache.set(bn, block.timestamp);
-      for (const tx of block.transactions) {
-        if (typeof tx === 'string') continue;
-        if (tx.from.toLowerCase() === safeAddress.toLowerCase() && tx.value > 0n) {
-          transactions.push({
-            txHash: tx.hash,
-            type: 'send',
-            from: tx.from as `0x${string}`,
-            to: (tx.to || '0x0000000000000000000000000000000000000000') as `0x${string}`,
-            amount: tx.value,
-            token: NATIVE_TOKEN,
-            timestamp: new Date(Number(block.timestamp) * 1000).toISOString(),
-            status: 'confirmed',
-            blockNumber: Number(bn),
-            safe: safeAddress,
-            executionDate: new Date(Number(block.timestamp) * 1000).toISOString(),
-          });
-        }
-      }
-    }
-  } catch (err) {
-    // Native ETH scan is best-effort
-    console.warn('Native ETH block scan failed:', err);
-  }
+  // NOTE: Native ETH outgoing from a Safe can't be detected on-chain by scanning blocks
+  // because the tx.from is the relayer (EOA), not the Safe (contract).
+  // Native ETH leaves the Safe as an internal transaction within execTransaction().
+  // We rely on localStorage cache (cacheLocalTransaction) for outgoing native ETH visibility.
 
   return transactions;
 }
