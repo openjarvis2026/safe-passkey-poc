@@ -256,11 +256,19 @@ export default function SwapView({ safe, onBack }: Props) {
       <div className="card">
         {/* From Token */}
         <div className="swap-token-section">
-          <div className="swap-section-header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>From</span>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-              Available: {formatNumber(parseFloat(sourceBalanceFormatted), 6)} {tokenFrom.symbol}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Available: {formatNumber(parseFloat(sourceBalanceFormatted), 6)} {tokenFrom.symbol}
+              </span>
+              <button
+                style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary-from)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}
+                onClick={handleMax}
+              >
+                Max
+              </button>
+            </div>
           </div>
           
           <div className="swap-input-row">
@@ -276,23 +284,14 @@ export default function SwapView({ safe, onBack }: Props) {
               <span className="swap-dropdown-arrow">▼</span>
             </button>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'flex-end' }}>
-              <input
-                className="swap-amount-input"
-                placeholder="0.0"
-                value={amountIn}
-                onChange={e => setAmountIn(e.target.value)}
-                inputMode="decimal"
-                pattern="[0-9]*\.?[0-9]*"
-              />
-              <button
-                className="btn btn-sm btn-secondary"
-                style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, flexShrink: 0 }}
-                onClick={handleMax}
-              >
-                Max
-              </button>
-            </div>
+            <input
+              className="swap-amount-input"
+              placeholder="0"
+              value={amountIn}
+              onChange={e => setAmountIn(e.target.value)}
+              inputMode="decimal"
+              pattern="[0-9]*\.?[0-9]*"
+            />
           </div>
         </div>
 
@@ -364,7 +363,7 @@ export default function SwapView({ safe, onBack }: Props) {
       {/* Swap Button — hidden after success */}
       {!txHash && threshold <= 1 ? (
         <SlideToConfirm
-          label="Slide to swap"
+          label="Slide to convert"
           disabled={!amountIn || parseFloat(amountIn) <= 0 || !quote || isLoadingQuote}
           onConfirm={handleSwap}
           testId="swap-slide"
