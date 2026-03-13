@@ -1,5 +1,7 @@
 import { formatUnits, parseAbiItem, type Hex } from 'viem';
 import { publicClient } from './relayer';
+import { cacheGet, cacheSet } from './cache';
+import { withRetry } from './retry';
 
 // Token interface
 export interface Token {
@@ -70,7 +72,14 @@ export interface TokenBalance {
 }
 
 // Fetch token balances using multicall
+// Serializable version for localStorage
+interface SerializedTokenBalance extends Omit<TokenBalance, 'balance'> { balance: string; }
+const BALANCES_CACHE_KEY = (addr: string) => `token_balances_${addr.toLowerCase()}`;
+
 export async function getTokenBalances(walletAddress: `0x${string}`): Promise<TokenBalance[]> {
+  const cacheKey = BALANCES_CACHE_KEY(walletAddress);
+  const cached = cacheGet<SerializedTokenBalance[]>(cacheKey);
+
   try {
     // Prepare multicall for ERC-20 tokens
     const erc20Tokens = TOKENS.filter(token => token.address !== '0x0000000000000000000000000000000000000000');
@@ -82,13 +91,13 @@ export async function getTokenBalances(walletAddress: `0x${string}`): Promise<To
       args: [walletAddress],
     }));
 
-    // Execute multicall for ERC-20 balances and get ETH balance
-    const [ethBalance, erc20Results] = await Promise.all([
+    // Execute multicall for ERC-20 balances and get ETH balance (with retry)
+    const [ethBalance, erc20Results] = await withRetry(() => Promise.all([
       publicClient.getBalance({ address: walletAddress }),
       multicallContracts.length > 0 ? publicClient.multicall({ contracts: multicallContracts }) : [],
-    ]);
+    ]));
 
-    // Get USD prices
+    // Get USD prices (non-critical, no retry needed)
     const usdPrices = await getTokenPricesUSD();
 
     // Combine results
@@ -118,10 +127,17 @@ export async function getTokenBalances(walletAddress: `0x${string}`): Promise<To
       });
     });
 
+    // Cache balances (serialize BigInt)
+    cacheSet(cacheKey, balances.map(b => ({ ...b, balance: b.balance.toString() })));
+
     return balances;
   } catch (error) {
     console.error('Error fetching token balances:', error);
-    // Return empty balances on error
+    // Return cached data on error if available
+    if (cached) {
+      return cached.map(b => ({ ...b, balance: BigInt(b.balance) }));
+    }
+    // Fallback: empty balances
     return TOKENS.map(token => ({
       token,
       balance: 0n,

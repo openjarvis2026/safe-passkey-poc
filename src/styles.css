@@ -1095,3 +1095,15 @@ body {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
+
+/* Skeleton shimmer for loading states (BF-3) */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border) 50%, var(--bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

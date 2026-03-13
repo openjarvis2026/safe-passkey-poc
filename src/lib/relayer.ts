@@ -1,18 +1,9 @@
-import { createWalletClient, createPublicClient, http, type Chain } from 'viem';
+import { createWalletClient, createPublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { chain, EXPLORER } from './chain';
+import { resilientTransport } from './rpc';
 
-export const baseSepolia: Chain = {
-  id: 84532,
-  name: 'Base Sepolia',
-  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: { default: { http: ['https://sepolia.base.org'] } },
-  blockExplorers: { default: { name: 'BaseScan', url: 'https://sepolia.basescan.org' } },
-  contracts: {
-    multicall3: {
-      address: '0xca11bde05977b3631167028862be2a173976ca11' as `0x${string}`,
-    },
-  },
-};
+export { chain, EXPLORER };
 
 const privateKey = import.meta.env.VITE_RELAYER_PRIVATE_KEY as `0x${string}`;
 if (!privateKey) throw new Error('VITE_RELAYER_PRIVATE_KEY not set');
@@ -21,13 +12,11 @@ export const relayerAccount = privateKeyToAccount(privateKey);
 
 export const walletClient = createWalletClient({
   account: relayerAccount,
-  chain: baseSepolia,
-  transport: http(),
+  chain,
+  transport: resilientTransport(),
 });
 
 export const publicClient = createPublicClient({
-  chain: baseSepolia,
-  transport: http(),
+  chain,
+  transport: resilientTransport(),
 });
-
-export const EXPLORER = 'https://sepolia.basescan.org';
