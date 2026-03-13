@@ -1,3 +1,4 @@
+import { CHAIN_ID_BIGINT } from './chain';
 import { keccak256, encodeAbiParameters, toHex, pad, concat, type Hex } from 'viem';
 
 // EIP-712 type hashes
@@ -30,7 +31,7 @@ export function computeSafeTxHash(
   nonce: bigint,
   operation: number = 0
 ): Hex {
-  const domainSeparator = computeDomainSeparator(84532n, safeAddress);
+  const domainSeparator = computeDomainSeparator(CHAIN_ID_BIGINT, safeAddress);
 
   const safeTxHash = keccak256(
     encodeAbiParameters(

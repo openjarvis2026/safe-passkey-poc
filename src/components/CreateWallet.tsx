@@ -1,3 +1,4 @@
+import { CHAIN_ID } from '../lib/chain';
 import { useState } from 'react';
 import { createPasskey } from '../lib/webauthn';
 import { deploySignerProxy, getSignerAddress } from '../lib/signer';
@@ -39,7 +40,7 @@ export default function CreateWallet({ onSafeCreated }: Props) {
 
       const saved: SavedSafe = {
         address: safeAddress,
-        chainId: 84532,
+        chainId: CHAIN_ID,
         owners: [{
           address: signerAddr,
           publicKey: {

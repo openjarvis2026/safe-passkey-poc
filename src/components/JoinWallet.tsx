@@ -1,3 +1,4 @@
+import { CHAIN_ID } from '../lib/chain';
 import { useState, useEffect } from 'react';
 import { createPasskey } from '../lib/webauthn';
 import { deploySignerProxy, getSignerAddress } from '../lib/signer';
@@ -63,7 +64,7 @@ export default function JoinWallet({ safeAddress, onJoined }: Props) {
         pending: true, // Mark as pending approval
       };
       const saved: SavedSafe = {
-        address: safeAddress, chainId: 84532,
+        address: safeAddress, chainId: CHAIN_ID,
         owners: [...existingOwners, localOwner],
         threshold, deployTxHash: '',
         pending: true, // Mark entire safe as pending

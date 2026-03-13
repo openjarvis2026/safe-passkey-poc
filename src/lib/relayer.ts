@@ -1,4 +1,4 @@
-import { createWalletClient, createPublicClient } from 'viem';
+import { createWalletClient, createPublicClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { chain, EXPLORER } from './chain';
 import { resilientTransport } from './rpc';
@@ -13,10 +13,10 @@ export const relayerAccount = privateKeyToAccount(privateKey);
 export const walletClient = createWalletClient({
   account: relayerAccount,
   chain,
-  transport: resilientTransport(),
+  transport: http(),
 });
 
 export const publicClient = createPublicClient({
   chain,
-  transport: resilientTransport(),
+  transport: http(),
 });
