@@ -9,7 +9,6 @@ import {
   encodeShareableTransaction,
   packSingleSignerData,
 } from '../lib/multisig';
-import SignerSwitch from './SignerSwitch';
 
 interface Props {
   safe: SavedSafe;
@@ -30,7 +29,6 @@ export default function Settings({ safe, onBack }: Props) {
   const [threshold, setThreshold] = useState(safe.threshold);
   const [newThreshold, setNewThreshold] = useState(safe.threshold);
   const [showThresholdChange, setShowThresholdChange] = useState(false);
-  const [showSignerSwitch, setShowSignerSwitch] = useState(false);
   const [thresholdStatus, setThresholdStatus] = useState('');
   const [shareUrl, setShareUrl] = useState('');
 
@@ -108,15 +106,6 @@ export default function Settings({ safe, onBack }: Props) {
     if (savedOwner && savedOwner.label) return savedOwner.label;
     return `Signer ${address.slice(2, 6)}`;
   };
-
-  if (showSignerSwitch) {
-    return (
-      <SignerSwitch 
-        safe={safe} 
-        onBack={() => setShowSignerSwitch(false)} 
-      />
-    );
-  }
 
   return (
     <div className="fade-in stack-lg">
@@ -240,22 +229,6 @@ export default function Settings({ safe, onBack }: Props) {
         )}
       </div>
 
-      {/* Signer Type */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 600 }}>Signer Type</h3>
-            <p className="text-muted text-sm">How you sign transactions</p>
-          </div>
-          <span className="badge badge-success">Passkey</span>
-        </div>
-        <button 
-          className="btn btn-secondary btn-sm" 
-          onClick={() => setShowSignerSwitch(true)}
-        >
-          Switch to Ledger
-        </button>
-      </div>
 
       {/* Safety Notice */}
       <div className="card" style={{ background: 'var(--success-light)', border: '1px solid var(--success)' }}>

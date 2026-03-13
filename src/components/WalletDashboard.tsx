@@ -11,7 +11,7 @@ import TransactionItem from './TransactionItem';
 import TokenIcon from './TokenIcon';
 import SwapView from './SwapView';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
-import { cacheLocalTransaction, fetchTransactionHistory, savePendingTransaction } from '../lib/history';
+import { cacheLocalTransaction, fetchTransactionHistory, savePendingTransaction, fetchPendingApprovals, type PendingApproval } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { type SavedSafe, saveSafe, clearSafe, base64ToArrayBuffer } from '../lib/storage';
@@ -68,6 +68,8 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   const [recentTxs, setRecentTxs] = useState<SafeTransaction[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [headerCopied, setHeaderCopied] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
 
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
@@ -115,6 +117,21 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       QRCode.toCanvas(shareQrRef.current, shareUrl, { width: 200, margin: 2 }).catch(() => {});
     }
   }, [shareUrl]);
+
+  // Fetch pending approvals from Safe Transaction Service
+  useEffect(() => {
+    const fetchApprovals = async () => {
+      const approvals = await fetchPendingApprovals(safe.address);
+      const myAddresses = safe.owners.map(o => o.address.toLowerCase());
+      const needsMyApproval = approvals.filter(a =>
+        !a.confirmations.some(c => myAddresses.includes(c.owner.toLowerCase()))
+      );
+      setPendingApprovals(needsMyApproval);
+    };
+    fetchApprovals();
+    const interval = setInterval(fetchApprovals, 30000);
+    return () => clearInterval(interval);
+  }, [safe.address]);
 
   const handleSend = async () => {
     if (!localCredentialId || !localOwner || !sendTo || !sendAmount || !selectedToken) return;
@@ -211,7 +228,15 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
     <div className="fade-in stack-lg">
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>🔐 Passkey Wallet</h2>
+        <h2 
+          style={{ fontSize: 20, fontWeight: 700, cursor: 'pointer' }} 
+          onClick={() => {
+            copy(safe.address);
+            setHeaderCopied(true);
+            setTimeout(() => setHeaderCopied(false), 2000);
+          }}
+          title="Tap to copy address"
+        >{headerCopied ? '✅ Copied!' : '🔐 My Wallet'}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <SafeSelector currentSafe={safe} onSafeChanged={onSafeChanged} />
           <button 
@@ -285,6 +310,82 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         </button>
       </div>
 
+      {/* Pending Approvals */}
+      {pendingApprovals.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
+              ⏳ Needs Your Approval ({pendingApprovals.length})
+            </h3>
+          </div>
+          {pendingApprovals.map(approval => {
+            const sigCount = approval.confirmations.length;
+            const sigRequired = approval.confirmationsRequired;
+            let icon = '📤';
+            let description = 'Contract interaction';
+
+            if (approval.dataDecoded) {
+              const method = approval.dataDecoded.method;
+              if (method === 'changeThreshold') {
+                icon = '🔧';
+                const newThreshold = approval.dataDecoded.parameters.find(p => p.name === '_threshold')?.value || '?';
+                description = `Change threshold to ${newThreshold}`;
+              } else if (method === 'addOwnerWithThreshold') {
+                icon = '👤';
+                description = 'Add signer';
+              } else if (method === 'removeOwner' || method === 'removeOwnerWithThreshold') {
+                icon = '🚫';
+                description = 'Remove signer';
+              } else if (method === 'transfer') {
+                icon = '💸';
+                const valuePar = approval.dataDecoded.parameters.find(p => p.name === 'value' || p.name === 'amount');
+                const toPar = approval.dataDecoded.parameters.find(p => p.name === 'to' || p.name === 'recipient');
+                description = `Send tokens to ${toPar?.value ? toPar.value.slice(0, 6) + '…' + toPar.value.slice(-4) : 'unknown'}`;
+                if (valuePar) description += ` (${valuePar.value})`;
+              } else {
+                description = method;
+              }
+            } else if (!approval.data || approval.data === '0x' || approval.data === null) {
+              // Native ETH send
+              icon = '💸';
+              const ethValue = BigInt(approval.value || '0');
+              description = `Send ${formatEther(ethValue)} ETH to ${approval.to.slice(0, 6)}…${approval.to.slice(-4)}`;
+            }
+
+            const proposerShort = approval.proposer === 'Unknown' ? 'Unknown' : `${approval.proposer.slice(0, 6)}…${approval.proposer.slice(-4)}`;
+            const timeAgo = (() => {
+              const diff = Date.now() - new Date(approval.submissionDate).getTime();
+              const mins = Math.floor(diff / 60000);
+              if (mins < 60) return `${mins}m ago`;
+              const hrs = Math.floor(mins / 60);
+              if (hrs < 24) return `${hrs}h ago`;
+              return `${Math.floor(hrs / 24)}d ago`;
+            })();
+
+            return (
+              <div key={approval.safeTxHash} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                  {icon}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>{description}</p>
+                  <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>
+                    by {proposerShort} · {timeAgo} · {sigCount}/{sigRequired} signed
+                  </p>
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ flexShrink: 0, fontSize: 12, padding: '6px 12px' }}
+                  onClick={() => { window.location.hash = `#/approve?safeTxHash=${approval.safeTxHash}&safe=${safe.address}`; }}
+                >
+                  Review
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Recent Activity */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -305,10 +406,10 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           </div>
         ) : recentTxs.length === 0 ? (
           <div className="card">
-            <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No transactions yet</p>
+            <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No activity yet — send or receive to get started</p>
           </div>
         ) : (
-          <div>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {recentTxs.slice(0, 5).map(tx => (
               <TransactionItem key={tx.txHash} transaction={tx} />
             ))}

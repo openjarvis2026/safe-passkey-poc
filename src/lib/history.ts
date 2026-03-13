@@ -5,7 +5,8 @@ import { publicClient } from './relayer';
 // Normalized transaction interface
 export interface SafeTransaction {
   txHash: string;
-  type: 'send' | 'receive' | 'ownerChange' | 'unknown';
+  type: 'send' | 'receive' | 'ownerChange' | 'thresholdChange' | 'unknown';
+  nonce?: string;
   to: `0x${string}`;
   from: `0x${string}`;
   amount: bigint;
@@ -131,7 +132,7 @@ interface SafeApiIncomingTransfersResponse {
 function detectTransactionType(
   tx: SafeApiModuleTransaction | SafeApiMultisigTransaction,
   safeAddress: `0x${string}`
-): 'send' | 'receive' | 'ownerChange' | 'unknown' {
+): 'send' | 'receive' | 'ownerChange' | 'thresholdChange' | 'unknown' {
   const safe = safeAddress.toLowerCase();
   
   // Check if this is an owner management transaction
@@ -141,11 +142,14 @@ function detectTransactionType(
       // Check common owner management function selectors
       const selector = tx.data.slice(0, 10).toLowerCase();
       if (
-        selector === '0x7de7edef' || // addOwnerWithThreshold
+        selector === '0x0d582f13' || // addOwnerWithThreshold
         selector === '0xf8dc5dd9' || // removeOwner
-        selector === '0x694e80c3'    // swapOwner
+        selector === '0xe318b52b'    // swapOwner
       ) {
         return 'ownerChange';
+      }
+      if (selector === '0x694e80c3') { // changeThreshold
+        return 'thresholdChange';
       }
     }
   }
@@ -279,7 +283,18 @@ function normalizeTransaction(
     blockNumber: tx.blockNumber || undefined,
     safe: safeAddress,
     executionDate: tx.executionDate || undefined,
+    nonce: tx.type === 'MULTISIG_TRANSACTION' ? String(tx.nonce) : undefined,
   };
+}
+
+// Get the current Safe nonce from the contract
+export async function fetchSafeNonce(safeAddress: `0x${string}`): Promise<number> {
+  const currentNonce = await publicClient.readContract({
+    address: safeAddress,
+    abi: [{ name: 'nonce', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
+    functionName: 'nonce',
+  });
+  return Number(currentNonce);
 }
 
 // Fetch transaction history from Safe Transaction Service API
@@ -651,10 +666,14 @@ export function removePendingTransaction(safeAddress: string, id: string): void 
   }
 }
 
-export function cleanupExecutedPendingTxs(safeAddress: string, confirmedNonces: Set<string>): void {
+export function cleanupExecutedPendingTxs(safeAddress: string, confirmedNonces: Set<string>, currentSafeNonce?: number): void {
   try {
     const pending = getPendingTransactions(safeAddress);
-    const remaining = pending.filter(tx => !confirmedNonces.has(tx.nonce));
+    const remaining = pending.filter(tx => {
+      if (confirmedNonces.has(tx.nonce)) return false;
+      if (currentSafeNonce !== undefined && parseInt(tx.nonce) < currentSafeNonce) return false;
+      return true;
+    });
     if (remaining.length !== pending.length) {
       localStorage.setItem(pendingTxKey(safeAddress), JSON.stringify(remaining));
     }
@@ -694,7 +713,9 @@ export function getTransactionIcon(type: SafeTransaction['type']): string {
     case 'receive':
       return '↓';
     case 'ownerChange':
-      return '👥';
+      return '👤';
+    case 'thresholdChange':
+      return '🔒';
     default:
       return '•';
   }
@@ -708,8 +729,56 @@ export function getTransactionTypeLabel(type: SafeTransaction['type']): string {
     case 'receive':
       return 'Received';
     case 'ownerChange':
-      return 'Owner Change';
+      return 'Signer Change';
+    case 'thresholdChange':
+      return 'Threshold Changed';
     default:
       return 'Transaction';
+  }
+}
+
+// ── Pending Approvals from Safe Transaction Service ──
+
+export interface PendingApproval {
+  safeTxHash: string;
+  to: string;
+  value: string;
+  data: string;
+  operation: number;
+  nonce: number;
+  confirmationsRequired: number;
+  confirmations: { owner: string }[];
+  submissionDate: string;
+  proposer: string;
+  dataDecoded?: {
+    method: string;
+    parameters: { name: string; type: string; value: string }[];
+  };
+}
+
+export async function fetchPendingApprovals(safeAddress: string): Promise<PendingApproval[]> {
+  const baseUrl = 'https://safe-transaction-base-sepolia.safe.global';
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/v1/safes/${safeAddress}/multisig-transactions/?executed=false&limit=20`
+    );
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.results || []).map((tx: any) => ({
+      safeTxHash: tx.safeTxHash,
+      to: tx.to,
+      value: tx.value,
+      data: tx.data,
+      operation: tx.operation,
+      nonce: tx.nonce,
+      confirmationsRequired: tx.confirmationsRequired,
+      confirmations: tx.confirmations || [],
+      submissionDate: tx.submissionDate,
+      proposer: tx.proposer || tx.confirmations?.[0]?.owner || 'Unknown',
+      dataDecoded: tx.dataDecoded,
+    }));
+  } catch (err) {
+    console.warn('Failed to fetch pending approvals:', err);
+    return [];
   }
 }

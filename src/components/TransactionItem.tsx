@@ -43,7 +43,7 @@ export default function TransactionItem({ transaction, onResend }: Props) {
   };
 
   // Icon color based on transaction type
-  const iconColor = type === 'receive' ? 'var(--success)' : type === 'send' ? 'var(--danger)' : 'var(--text-secondary)';
+  const iconColor = type === 'receive' ? 'var(--success)' : type === 'send' ? 'var(--danger)' : type === 'thresholdChange' ? 'var(--warning, #f59e0b)' : 'var(--text-secondary)';
   
   // Amount color based on transaction type
   const amountColor = type === 'receive' ? 'var(--success)' : type === 'send' ? 'var(--danger)' : 'var(--text-primary)';
@@ -60,7 +60,11 @@ export default function TransactionItem({ transaction, onResend }: Props) {
             ? 'rgba(52, 199, 89, 0.15)' 
             : type === 'send' 
               ? 'rgba(255, 59, 48, 0.15)' 
-              : 'rgba(142, 142, 147, 0.15)',
+              : type === 'thresholdChange'
+                ? 'rgba(245, 158, 11, 0.15)'
+                : type === 'ownerChange'
+                  ? 'rgba(99, 102, 241, 0.15)'
+                  : 'rgba(142, 142, 147, 0.15)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
