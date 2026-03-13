@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { formatEther, parseUnits } from 'viem';
+import { formatEther, parseUnits, formatUnits } from 'viem';
 import QRCode from 'qrcode';
 import { publicClient, EXPLORER } from '../lib/relayer';
 import SlideToConfirm from './shared/SlideToConfirm';
@@ -19,7 +19,7 @@ import {
   encodeShareableTransaction,
   packSingleSignerData,
 } from '../lib/multisig';
-import { NATIVE_TOKEN, type Token, formatTokenAmount } from '../lib/tokens';
+import { NATIVE_TOKEN, type Token, formatTokenAmount, getTokenBalances, type TokenBalance } from '../lib/tokens';
 import { type SafeTransaction } from '../lib/history';
 
 type View = 'home' | 'send' | 'receive' | 'add-owner' | 'history' | 'swap';
@@ -52,6 +52,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   const [txHash, setTxHash] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [selectedToken, setSelectedToken] = useState<Token>(NATIVE_TOKEN);
+  const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const shareQrRef = useRef<HTMLCanvasElement>(null);
 
@@ -79,6 +80,11 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         setBalance(b);
         setOwners(o);
         setThreshold(Number(t));
+        // Fetch token balances
+        try {
+          const tb = await getTokenBalances(safe.address);
+          setTokenBalances(tb);
+        } catch {}
         // Fetch recent transactions
         try {
           const txs = await fetchTransactionHistory(safe.address, 5);
@@ -235,13 +241,13 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       </div>
 
       {/* Token List */}
-      <TokenList safeAddress={safe.address} />
+      <TokenList safeAddress={safe.address} ethBalance={balance} />
 
       {/* Owners */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Authorized Devices</h3>
-          <span className="badge badge-success">{threshold} of {owners.length || safe.owners.length}</span>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Your Devices</h3>
+          <span className="badge badge-success">{owners.length || safe.owners.length} {(owners.length || safe.owners.length) === 1 ? 'device' : 'devices'}</span>
         </div>
         <div className="stack">
           {(owners.length > 0 ? owners : safe.owners.map(o => o.address)).map(addr => {
@@ -261,7 +267,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           })}
         </div>
         <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => window.location.hash = `#/invite?safe=${safe.address}`}>
-          + Invite Signer
+          + Add Device
         </button>
       </div>
 
@@ -430,8 +436,20 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
 
       <div className="card" style={{ textAlign: 'center' }}>
         <canvas ref={receiveQrRef} style={{ marginBottom: 16 }} />
-        <div className="addr-chip" style={{ marginBottom: 12 }}>{safe.address}</div>
-        <button className="btn btn-primary btn-sm" onClick={() => copy(safe.address)}>📋 Copy Address</button>
+        <p className="text-secondary text-sm" style={{ marginBottom: 12 }}>Share this address to receive funds</p>
+        <div className="addr-chip" style={{ marginBottom: 12, fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all', letterSpacing: '0.5px' }}>
+          {safe.address.slice(0, 6) + ' ' + safe.address.slice(6).match(/.{1,4}/g)!.join(' ')}
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn btn-primary btn-sm flex-1" onClick={() => {
+            copy(safe.address);
+            const btn = document.activeElement as HTMLButtonElement;
+            if (btn) { const orig = btn.textContent; btn.textContent = 'Copied! ✓'; setTimeout(() => { btn.textContent = orig; }, 2000); }
+          }}>📋 Copy Address</button>
+          {typeof navigator.share === 'function' && (
+            <button className="btn btn-secondary btn-sm flex-1" onClick={() => navigator.share({ text: safe.address }).catch(() => {})}>📤 Share</button>
+          )}
+        </div>
       </div>
     </div>
   );

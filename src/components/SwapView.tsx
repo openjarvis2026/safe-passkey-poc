@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { type SavedSafe } from '../lib/storage';
-import { type Token, NATIVE_TOKEN, TOKENS } from '../lib/tokens';
+import { type Token, NATIVE_TOKEN, TOKENS, getTokenBalances, type TokenBalance } from '../lib/tokens';
 import { getSwapQuote, encodeSwapTransaction, formatSwapQuote, type SwapQuote } from '../lib/swap';
 import { getNonce, execTransaction } from '../lib/safe';
 import { EXPLORER } from '../lib/relayer';
@@ -15,6 +15,7 @@ import {
 } from '../lib/multisig';
 import SlideToConfirm from './shared/SlideToConfirm';
 import TokenSelector from './TokenSelector';
+import TokenIcon from './TokenIcon';
 
 interface Props {
   safe: SavedSafe;
@@ -34,6 +35,12 @@ export default function SwapView({ safe, onBack }: Props) {
   const [showSettings, setShowSettings] = useState(false);
   const [txHash, setTxHash] = useState('');
   const [shareUrl, setShareUrl] = useState('');
+  const [balances, setBalances] = useState<TokenBalance[]>([]);
+
+  // Fetch balances
+  useEffect(() => {
+    getTokenBalances(safe.address as `0x${string}`).then(setBalances).catch(console.error);
+  }, [safe.address]);
 
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
@@ -143,6 +150,22 @@ export default function SwapView({ safe, onBack }: Props) {
     setShareUrl('');
   };
 
+  const sourceBalance = balances.find(b => b.token.address.toLowerCase() === tokenFrom.address.toLowerCase());
+  const sourceBalanceFormatted = sourceBalance ? sourceBalance.formattedBalance : '0';
+
+  const handleMax = () => {
+    if (!sourceBalance) return;
+    let max = parseFloat(sourceBalance.formattedBalance);
+    // Reserve gas buffer for ETH
+    if (tokenFrom.symbol === 'ETH') max = Math.max(0, max - 0.001);
+    setAmountIn(max > 0 ? max.toString() : '');
+  };
+
+  const formatNumber = (n: number, maxDecimals = 6): string => {
+    if (n === 0) return '0';
+    return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: maxDecimals });
+  };
+
   const formattedQuote = quote ? formatSwapQuote(quote) : null;
   const canSwap = quote && amountIn && parseFloat(amountIn) > 0 && !isLoadingQuote;
 
@@ -189,17 +212,23 @@ export default function SwapView({ safe, onBack }: Props) {
                 </button>
               ))}
             </div>
-            <input
-              type="number"
-              className="input"
-              style={{ marginTop: 8, fontSize: 14 }}
-              placeholder="Custom %"
-              value={slippage}
-              onChange={e => setSlippage(parseFloat(e.target.value) || 0.5)}
-              min="0.01"
-              max="50"
-              step="0.01"
-            />
+            <div style={{ position: 'relative', marginTop: 8 }}>
+              <input
+                type="text"
+                inputMode="decimal"
+                className="input"
+                style={{ fontSize: 14, paddingRight: 32 }}
+                placeholder="Custom"
+                value={slippage}
+                onChange={e => {
+                  const val = e.target.value.replace(',', '.');
+                  const num = parseFloat(val);
+                  if (!isNaN(num) && num >= 0 && num <= 50) setSlippage(num);
+                  else if (val === '' || val === '0' || val === '0.') setSlippage(0.5);
+                }}
+              />
+              <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: 14, pointerEvents: 'none' }}>%</span>
+            </div>
           </div>
         </div>
       )}
@@ -210,6 +239,9 @@ export default function SwapView({ safe, onBack }: Props) {
         <div className="swap-token-section">
           <div className="swap-section-header">
             <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>From</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+              Available: {formatNumber(parseFloat(sourceBalanceFormatted), 6)} {tokenFrom.symbol}
+            </span>
           </div>
           
           <div className="swap-input-row">
@@ -217,12 +249,7 @@ export default function SwapView({ safe, onBack }: Props) {
               className="swap-token-selector"
               onClick={() => setShowFromSelector(true)}
             >
-              <div className="swap-token-icon">
-                {tokenFrom.symbol === 'ETH' && '⚡'}
-                {tokenFrom.symbol === 'USDC' && '💙'}
-                {tokenFrom.symbol === 'USDT' && '💚'}
-                {tokenFrom.symbol === 'WETH' && '🔷'}
-              </div>
+              <TokenIcon symbol={tokenFrom.symbol} size={32} />
               <div className="swap-token-info">
                 <span className="swap-token-symbol">{tokenFrom.symbol}</span>
                 <span className="swap-token-name">{tokenFrom.name}</span>
@@ -230,14 +257,23 @@ export default function SwapView({ safe, onBack }: Props) {
               <span className="swap-dropdown-arrow">▼</span>
             </button>
             
-            <input
-              className="swap-amount-input"
-              placeholder="0.0"
-              value={amountIn}
-              onChange={e => setAmountIn(e.target.value)}
-              inputMode="decimal"
-              pattern="[0-9]*\.?[0-9]*"
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'flex-end' }}>
+              <input
+                className="swap-amount-input"
+                placeholder="0.0"
+                value={amountIn}
+                onChange={e => setAmountIn(e.target.value)}
+                inputMode="decimal"
+                pattern="[0-9]*\.?[0-9]*"
+              />
+              <button
+                className="btn btn-sm btn-secondary"
+                style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, flexShrink: 0 }}
+                onClick={handleMax}
+              >
+                Max
+              </button>
+            </div>
           </div>
         </div>
 
@@ -263,12 +299,7 @@ export default function SwapView({ safe, onBack }: Props) {
               className="swap-token-selector"
               onClick={() => setShowToSelector(true)}
             >
-              <div className="swap-token-icon">
-                {tokenTo.symbol === 'ETH' && '⚡'}
-                {tokenTo.symbol === 'USDC' && '💙'}
-                {tokenTo.symbol === 'USDT' && '💚'}
-                {tokenTo.symbol === 'WETH' && '🔷'}
-              </div>
+              <TokenIcon symbol={tokenTo.symbol} size={32} />
               <div className="swap-token-info">
                 <span className="swap-token-symbol">{tokenTo.symbol}</span>
                 <span className="swap-token-name">{tokenTo.name}</span>
@@ -280,7 +311,7 @@ export default function SwapView({ safe, onBack }: Props) {
               {isLoadingQuote ? (
                 <div className="spinner" style={{ width: 16, height: 16 }} />
               ) : formattedQuote ? (
-                <span>{parseFloat(formattedQuote.amountOut).toFixed(6)}</span>
+                <span>{formatNumber(parseFloat(formattedQuote.amountOut))}</span>
               ) : (
                 <span style={{ color: 'var(--text-muted)' }}>0.0</span>
               )}
