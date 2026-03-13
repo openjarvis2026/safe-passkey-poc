@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { type SafeTransaction, fetchTransactionHistory, type PendingTransaction, getPendingTransactions, cleanupExecutedPendingTxs } from '../lib/history';
+import { type SafeTransaction, fetchTransactionHistory, fetchSafeNonce, type PendingTransaction, getPendingTransactions, cleanupExecutedPendingTxs } from '../lib/history';
 import { TOKENS, type Token, NATIVE_TOKEN } from '../lib/tokens';
 import TransactionItem from './TransactionItem';
 import PendingTransactionItem from './PendingTransactionItem';
@@ -21,31 +21,47 @@ export default function TransactionHistory({ safeAddress, onBack, onResend }: Pr
   const [error, setError] = useState<string>('');
   const [selectedFilter, setSelectedFilter] = useState<FilterOption>('all');
   
-  // Fetch transaction history
-  useEffect(() => {
-    const fetchHistory = async () => {
+  // Shared fetch + cleanup logic
+  const fetchAndCleanup = async (showLoading = true) => {
+    if (showLoading) {
       setLoading(true);
       setError('');
-      
-      try {
-        const txs = await fetchTransactionHistory(safeAddress);
-        setTransactions(txs);
-        // Auto-cleanup pending txs whose nonce has been executed
-        const confirmedNonces = new Set(
-          txs.filter(t => t.status === 'confirmed' && t.nonce).map(t => t.nonce!).filter(Boolean)
-        );
-        cleanupExecutedPendingTxs(safeAddress, confirmedNonces);
-        setPendingTxs(getPendingTransactions(safeAddress));
-      } catch (err: any) {
-        console.error('Failed to fetch transaction history:', err);
-        setError(err.message || 'Failed to load transaction history');
-        setPendingTxs(getPendingTransactions(safeAddress));
-      } finally {
-        setLoading(false);
-      }
-    };
+    }
     
-    fetchHistory();
+    try {
+      const [txs, currentNonce] = await Promise.all([
+        fetchTransactionHistory(safeAddress),
+        fetchSafeNonce(safeAddress).catch(() => undefined),
+      ]);
+      setTransactions(txs);
+      // Auto-cleanup pending txs whose nonce has been executed or is below current Safe nonce
+      const confirmedNonces = new Set(
+        txs.filter(t => t.status === 'confirmed' && t.nonce).map(t => t.nonce!).filter(Boolean)
+      );
+      cleanupExecutedPendingTxs(safeAddress, confirmedNonces, currentNonce);
+      setPendingTxs(getPendingTransactions(safeAddress));
+    } catch (err: any) {
+      console.error('Failed to fetch transaction history:', err);
+      if (showLoading) {
+        setError(err.message || 'Failed to load transaction history');
+      }
+      setPendingTxs(getPendingTransactions(safeAddress));
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  // Fetch transaction history
+  useEffect(() => {
+    fetchAndCleanup(true);
+  }, [safeAddress]);
+
+  // Poll every 30s to auto-update pending tx status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAndCleanup(false);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [safeAddress]);
   
   // Filter transactions by selected token

@@ -287,6 +287,16 @@ function normalizeTransaction(
   };
 }
 
+// Get the current Safe nonce from the contract
+export async function fetchSafeNonce(safeAddress: `0x${string}`): Promise<number> {
+  const currentNonce = await publicClient.readContract({
+    address: safeAddress,
+    abi: [{ name: 'nonce', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] }],
+    functionName: 'nonce',
+  });
+  return Number(currentNonce);
+}
+
 // Fetch transaction history from Safe Transaction Service API
 export async function fetchTransactionHistory(
   safeAddress: `0x${string}`,
@@ -656,10 +666,14 @@ export function removePendingTransaction(safeAddress: string, id: string): void 
   }
 }
 
-export function cleanupExecutedPendingTxs(safeAddress: string, confirmedNonces: Set<string>): void {
+export function cleanupExecutedPendingTxs(safeAddress: string, confirmedNonces: Set<string>, currentSafeNonce?: number): void {
   try {
     const pending = getPendingTransactions(safeAddress);
-    const remaining = pending.filter(tx => !confirmedNonces.has(tx.nonce));
+    const remaining = pending.filter(tx => {
+      if (confirmedNonces.has(tx.nonce)) return false;
+      if (currentSafeNonce !== undefined && parseInt(tx.nonce) < currentSafeNonce) return false;
+      return true;
+    });
     if (remaining.length !== pending.length) {
       localStorage.setItem(pendingTxKey(safeAddress), JSON.stringify(remaining));
     }
