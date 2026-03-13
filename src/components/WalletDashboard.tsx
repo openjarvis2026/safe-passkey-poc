@@ -10,6 +10,8 @@ import TransactionHistory from './TransactionHistory';
 import TransactionItem from './TransactionItem';
 import TokenIcon from './TokenIcon';
 import SwapView from './SwapView';
+import ErrorBoundary from './shared/ErrorBoundary';
+import { BalanceSkeleton, LoadingSpinner, EmptyState } from './shared/LoadingStates';
 import { getNonce, execTransaction, getOwners, getThreshold, encodeAddOwnerWithThreshold, encodeERC20Transfer } from '../lib/safe';
 import { cacheLocalTransaction, fetchTransactionHistory, savePendingTransaction, fetchPendingApprovals, type PendingApproval } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
@@ -74,34 +76,40 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
 
-  // Poll balance + owners + history
+  // Poll balance + owners + history (R-4: race condition safe with request IDs)
   useEffect(() => {
+    let requestId = 0;
+    let cancelled = false;
+
     const refresh = async () => {
+      const thisRequest = ++requestId;
       try {
         const [b, o, t] = await Promise.all([
           publicClient.getBalance({ address: safe.address }),
           getOwners(safe.address),
           getThreshold(safe.address),
         ]);
+        // Only apply if this is still the latest request
+        if (cancelled || thisRequest !== requestId) return;
         setBalance(b);
         setOwners(o);
         setThreshold(Number(t));
         // Fetch token balances
         try {
           const tb = await getTokenBalances(safe.address);
-          setTokenBalances(tb);
+          if (!cancelled && thisRequest === requestId) setTokenBalances(tb);
         } catch {}
         // Fetch recent transactions
         try {
           const txs = await fetchTransactionHistory(safe.address, 5);
-          setRecentTxs(txs);
+          if (!cancelled && thisRequest === requestId) setRecentTxs(txs);
         } catch {}
-        setHistoryLoading(false);
+        if (!cancelled && thisRequest === requestId) setHistoryLoading(false);
       } catch {}
     };
     refresh();
     const id = setInterval(refresh, 6000);
-    return () => clearInterval(id);
+    return () => { cancelled = true; clearInterval(id); };
   }, [safe.address]);
 
   // QR for receive
@@ -280,7 +288,9 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       </div>
 
       {/* Token List */}
-      <TokenList safeAddress={safe.address} ethBalance={balance} />
+      <ErrorBoundary fallbackTitle="Failed to load tokens">
+        <TokenList safeAddress={safe.address} ethBalance={balance} />
+      </ErrorBoundary>
 
       {/* Owners */}
       <div className="card">
@@ -387,6 +397,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       )}
 
       {/* Recent Activity */}
+      <ErrorBoundary fallbackTitle="Failed to load activity">
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>Recent Activity</h3>
@@ -401,12 +412,12 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           )}
         </div>
         {historyLoading ? (
-          <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-            <div className="spinner spinner-dark" style={{ width: 20, height: 20 }} />
+          <div className="card">
+            <LoadingSpinner text="Loading activity..." />
           </div>
         ) : recentTxs.length === 0 ? (
           <div className="card">
-            <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No activity yet — send or receive to get started</p>
+            <EmptyState icon="📋" title="No activity yet" message="Send or receive to get started" />
           </div>
         ) : (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -416,6 +427,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           </div>
         )}
       </div>
+      </ErrorBoundary>
 
       {/* Safe address */}
       <div style={{ textAlign: 'center' }}>
@@ -661,10 +673,12 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
 
   // ── SWAP VIEW ──
   if (view === 'swap') return (
-    <SwapView 
-      safe={safe}
-      onBack={() => setView('home')}
-    />
+    <ErrorBoundary fallbackTitle="Failed to load swap">
+      <SwapView 
+        safe={safe}
+        onBack={() => setView('home')}
+      />
+    </ErrorBoundary>
   );
 
   return null;

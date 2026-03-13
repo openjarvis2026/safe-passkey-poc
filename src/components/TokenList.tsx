@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
 import { getTokenBalances, formatTokenAmount, formatUSDValue, type TokenBalance } from '../lib/tokens';
 import TokenIcon from './TokenIcon';
+import { TokenListSkeleton, ErrorCard, EmptyState } from './shared/LoadingStates';
 
 interface Props {
   safeAddress: `0x${string}`;
@@ -11,27 +12,33 @@ interface Props {
 export default function TokenList({ safeAddress, ethBalance }: Props) {
   const [balances, setBalances] = useState<TokenBalance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showAll, setShowAll] = useState(false);
 
-  // Fetch token balances
-  useEffect(() => {
-    const fetchBalances = async () => {
-      try {
-        setLoading(true);
-        const tokenBalances = await getTokenBalances(safeAddress);
-        setBalances(tokenBalances);
-      } catch (error) {
-        console.error('Error fetching token balances:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchBalances = async (requestId: number, currentId: () => number) => {
+    try {
+      if (currentId() === requestId) setLoading(prev => balances.length === 0 ? true : prev);
+      const tokenBalances = await getTokenBalances(safeAddress);
+      if (currentId() !== requestId) return; // R-4: stale response
+      setBalances(tokenBalances);
+      setError('');
+    } catch (err) {
+      if (currentId() !== requestId) return;
+      console.error('Error fetching token balances:', err);
+      setError('Failed to load tokens');
+    } finally {
+      if (currentId() === requestId) setLoading(false);
+    }
+  };
 
-    fetchBalances();
-    
-    // Refresh balances every 30 seconds
-    const interval = setInterval(fetchBalances, 30000);
-    return () => clearInterval(interval);
+  // Fetch token balances (R-4: race-condition safe)
+  useEffect(() => {
+    let reqId = 0;
+    const getId = () => reqId;
+    const refresh = () => fetchBalances(++reqId, getId);
+    refresh();
+    const interval = setInterval(refresh, 30000);
+    return () => { reqId = -1; clearInterval(interval); };
   }, [safeAddress]);
 
   // Override ETH balance from parent if provided
@@ -58,15 +65,12 @@ export default function TokenList({ safeAddress, ethBalance }: Props) {
     return sum + (balance.usdValue || 0);
   }, 0);
 
-  if (loading) {
-    return (
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="spinner spinner-dark" style={{ width: 20, height: 20 }} />
-          <span style={{ marginLeft: 8, fontSize: 14 }}>Loading tokens...</span>
-        </div>
-      </div>
-    );
+  if (loading && balances.length === 0) {
+    return <TokenListSkeleton />;
+  }
+
+  if (error && balances.length === 0) {
+    return <ErrorCard message={error} onRetry={() => { let id = 0; fetchBalances(++id, () => id); }} />;
   }
 
   return (
