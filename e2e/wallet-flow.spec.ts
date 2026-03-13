@@ -37,9 +37,8 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
     // Extract Safe address from the bottom of the dashboard
     const safeAddressLink = page.locator('a[href*="basescan.org/address/"]').last();
     await expect(safeAddressLink).toBeVisible({ timeout: 10_000 });
-    const safeAddressText = await safeAddressLink.textContent();
     
-    // The address is displayed as shortened (0x1234…abcd), get the full address from href
+    // Get the full address from href
     const href = await safeAddressLink.getAttribute('href');
     const safeAddress = href!.split('/address/')[1];
     expect(safeAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
@@ -63,15 +62,22 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
     const recipientAddress = '0x000000000000000000000000000000000000dEaD';
     const sendAmount = '0.0001';
 
-    // Click Send button
-    await page.getByRole('button', { name: /send/i }).first().click();
+    // Click Send button (now just "Send", no arrow prefix)
+    await page.getByRole('button', { name: 'Send' }).first().click();
     await expect(page.getByText('Send').first()).toBeVisible();
 
     // Fill in recipient and amount
     await page.getByPlaceholder(/recipient/i).fill(recipientAddress);
     await page.getByPlaceholder(/amount/i).fill(sendAmount);
 
-    // Use slide-to-confirm or button (threshold=1 uses slide)
+    // Step 1: Click "Review" button to move to review card
+    const reviewBtn = page.getByRole('button', { name: 'Review' });
+    await expect(reviewBtn).toBeVisible({ timeout: 5_000 });
+    await reviewBtn.click();
+
+    // Step 2: Review card appears — now slide to confirm or click send
+    await expect(page.getByText('Review Transaction')).toBeVisible({ timeout: 5_000 });
+
     const slideTrack = page.locator('.slide-track, .slide-to-confirm');
     const sendButton = page.getByRole('button', { name: /send/i });
 
@@ -81,7 +87,6 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
       if (box) {
         await page.mouse.move(box.x + 20, box.y + box.height / 2);
         await page.mouse.down();
-        // Slide across the full width
         for (let x = box.x + 20; x <= box.x + box.width - 20; x += 10) {
           await page.mouse.move(x, box.y + box.height / 2);
         }
@@ -91,16 +96,16 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
       await sendButton.click();
     }
 
-    // Wait for transaction to complete
-    await expect(page.getByText('Sent! ✅')).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
+    // Wait for transaction to complete — success card shows "Sent!" heading
+    await expect(page.getByText('Sent!', { exact: false })).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
     console.log('Send transaction completed');
 
-    // ── 9. Navigate to History ──
-    // Go back to home first
-    const backBtn = page.locator('button').filter({ hasText: '←' });
-    if (await backBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await backBtn.click();
-    }
+    // Verify success card elements
+    await expect(page.getByRole('button', { name: /send more/i })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: /go home/i })).toBeVisible({ timeout: 5_000 });
+
+    // ── 9. Navigate to History via "Go Home" then "View All" ──
+    await page.getByRole('button', { name: /go home/i }).click();
 
     // Wait for home to load
     await expect(page.getByText('Total Balance')).toBeVisible({ timeout: 10_000 });
@@ -142,7 +147,7 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
       expect(await txItems.count()).toBeGreaterThan(0);
     }
 
-    // ── 13. Test Swap Flow ──
+    // ── 13. Test Convert Flow ──
     // Navigate back to home
     const backFromHistory = page.locator('button').filter({ hasText: '←' });
     if (await backFromHistory.isVisible({ timeout: 2_000 }).catch(() => false)) {
@@ -150,18 +155,18 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
     }
     await expect(page.getByText('Total Balance')).toBeVisible({ timeout: 10_000 });
 
-    // Click Swap button
-    await page.getByRole('button', { name: /swap/i }).click({ force: true });
-    await expect(page.getByText('Swap Tokens')).toBeVisible({ timeout: 10_000 });
+    // Click Convert button (was "Swap")
+    await page.getByRole('button', { name: 'Convert' }).click({ force: true });
+    await expect(page.getByText('Convert')).toBeVisible({ timeout: 10_000 });
 
-    // Enter a small amount to swap (ETH → USDC is default)
+    // Enter a small amount to convert (ETH → USDC is default)
     await page.locator('.swap-amount-input').fill('0.0001');
 
     // Wait for quote to load
     await expect(page.getByText('Exchange Rate')).toBeVisible({ timeout: 10_000 });
-    console.log('Swap quote loaded');
+    console.log('Convert quote loaded');
 
-    // Trigger swap slide using Playwright's dragTo on the thumb
+    // Trigger convert slide using Playwright's dragTo on the thumb
     const swapTrack = page.locator('[data-testid="swap-slide"]');
     const swapThumb = swapTrack.locator('.slide-thumb');
     await expect(swapThumb).toBeVisible({ timeout: 5_000 });
@@ -176,10 +181,10 @@ test.describe('Simply Wallet — Full Lifecycle', () => {
       });
     }
 
-    // Wait for swap to complete or error  
-    await expect(page.getByText(/Swap completed|Error/)).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
-    const swapStatus = await page.getByText(/Swap completed|Error/).textContent();
-    console.log('Swap result:', swapStatus);
+    // Wait for convert to complete or error  
+    await expect(page.getByText(/completed|Error/)).toBeVisible({ timeout: BLOCKCHAIN_TIMEOUT });
+    const convertStatus = await page.getByText(/completed|Error/).textContent();
+    console.log('Convert result:', convertStatus);
 
     // Cleanup
     await teardownVirtualAuthenticator(auth);
