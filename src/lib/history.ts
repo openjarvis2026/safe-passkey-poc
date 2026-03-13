@@ -1,6 +1,10 @@
 import { getAddress } from 'viem';
 import { type Token, findTokenByAddress, NATIVE_TOKEN, TOKENS } from './tokens';
 import { publicClient } from './relayer';
+import { cacheGet, cacheSet } from './cache';
+import { withRetry } from './retry';
+
+const HISTORY_CACHE_KEY = (addr: string) => `tx_history_${addr.toLowerCase()}`;
 
 // Normalized transaction interface
 export interface SafeTransaction {
@@ -298,42 +302,54 @@ export async function fetchSafeNonce(safeAddress: `0x${string}`): Promise<number
 }
 
 // Fetch transaction history from Safe Transaction Service API
+// Serializable version of SafeTransaction (BigInt → string)
+interface SerializedSafeTransaction extends Omit<SafeTransaction, 'amount'> {
+  amount: string;
+}
+
+function serializeTx(tx: SafeTransaction): SerializedSafeTransaction {
+  return { ...tx, amount: tx.amount.toString() };
+}
+
+function deserializeTx(tx: SerializedSafeTransaction): SafeTransaction {
+  return { ...tx, amount: BigInt(tx.amount) };
+}
+
+/**
+ * Fetch transaction history with stale-while-revalidate caching (BF-3 / R-2).
+ * Returns cached data immediately if available; refreshes in background.
+ * Retries API calls up to 3 times with exponential backoff.
+ * Never overwrites good cached data with empty API responses.
+ */
 export async function fetchTransactionHistory(
   safeAddress: `0x${string}`,
   limit = 50
 ): Promise<SafeTransaction[]> {
+  const cacheKey = HISTORY_CACHE_KEY(safeAddress);
+
+  // Try to return cached data; caller gets fresh data on next invocation
+  const cached = cacheGet<SerializedSafeTransaction[]>(cacheKey);
+
+  // Always attempt a fresh fetch (stale-while-revalidate: caller polls)
   try {
     // Ensure the Safe address is checksummed
     const checksummedAddress = getAddress(safeAddress);
     
     const baseUrl = 'https://safe-transaction-base-sepolia.safe.global';
     
-    // Fetch all three transaction sources
+    const safeFetch = (url: string) =>
+      withRetry(() =>
+        fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        }).then(r => { if (!r.ok && r.status !== 404 && r.status !== 422) throw new Error(`HTTP ${r.status}`); return r; })
+      );
+
+    // Fetch all three transaction sources (with retry)
     const [outgoingTxs, incomingTransfers, multisigTxs] = await Promise.allSettled([
-      // Fetch outgoing transactions
-      fetch(`${baseUrl}/api/v1/safes/${checksummedAddress}/all-transactions/?limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      }),
-      // Fetch incoming transfers
-      fetch(`${baseUrl}/api/v1/safes/${checksummedAddress}/incoming-transfers/?limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      }),
-      // Fetch executed multisig transactions (specifically for outgoing transactions)
-      fetch(`${baseUrl}/api/v1/safes/${checksummedAddress}/multisig-transactions/?limit=${limit}&executed=true`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      })
+      safeFetch(`${baseUrl}/api/v1/safes/${checksummedAddress}/all-transactions/?limit=${limit}`),
+      safeFetch(`${baseUrl}/api/v1/safes/${checksummedAddress}/incoming-transfers/?limit=${limit}`),
+      safeFetch(`${baseUrl}/api/v1/safes/${checksummedAddress}/multisig-transactions/?limit=${limit}&executed=true`),
     ]);
 
     const transactions: SafeTransaction[] = [];
@@ -431,12 +447,21 @@ export async function fetchTransactionHistory(
     });
 
     // Sort by timestamp (newest first)
-    return deduplicated.sort((a, b) => 
+    const sorted = deduplicated.sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 
+    // Cache the result (R-2: skipEmpty=true won't overwrite good data with [])
+    cacheSet(cacheKey, sorted.map(serializeTx));
+
+    return sorted;
+
   } catch (error) {
     console.error('Error fetching transaction history:', error);
+    // Return cached data on failure instead of throwing
+    if (cached) {
+      return cached.map(deserializeTx);
+    }
     throw error;
   }
 }

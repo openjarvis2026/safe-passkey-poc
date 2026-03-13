@@ -22,6 +22,7 @@ import {
 } from '../lib/multisig';
 import { NATIVE_TOKEN, type Token, formatTokenAmount, formatUSDValue, getTokenBalances, type TokenBalance } from '../lib/tokens';
 import { type SafeTransaction } from '../lib/history';
+import { cacheGet } from '../lib/cache';
 
 type View = 'home' | 'send' | 'receive' | 'add-owner' | 'history' | 'swap';
 
@@ -53,7 +54,11 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   const [txHash, setTxHash] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [selectedToken, setSelectedToken] = useState<Token>(NATIVE_TOKEN);
-  const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
+  const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>(() => {
+    const cached = cacheGet<Array<TokenBalance & { balance: string }>>(`token_balances_${safe.address.toLowerCase()}`);
+    if (cached) return cached.map(b => ({ ...b, balance: BigInt(b.balance) }));
+    return [];
+  });
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const [sendMemo, setSendMemo] = useState('');
   const [showReview, setShowReview] = useState(false);
@@ -64,9 +69,15 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
 
   // Removed add owner state - now using InviteSigner component
 
-  // Transaction history (recent activity)
-  const [recentTxs, setRecentTxs] = useState<SafeTransaction[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
+  // Transaction history (recent activity) — seed from cache for instant display
+  const [recentTxs, setRecentTxs] = useState<SafeTransaction[]>(() => {
+    const cached = cacheGet<Array<SafeTransaction & { amount: string }>>(`tx_history_${safe.address.toLowerCase()}`);
+    if (cached) return cached.map(tx => ({ ...tx, amount: BigInt(tx.amount) }));
+    return [];
+  });
+  const [historyLoading, setHistoryLoading] = useState(() => {
+    return !cacheGet(`tx_history_${safe.address.toLowerCase()}`);
+  });
   const [copied, setCopied] = useState(false);
   const [headerCopied, setHeaderCopied] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
@@ -401,8 +412,17 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           )}
         </div>
         {historyLoading ? (
-          <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-            <div className="spinner spinner-dark" style={{ width: 20, height: 20 }} />
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div className="skeleton-shimmer" style={{ width: 40, height: 40, borderRadius: 20, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="skeleton-shimmer" style={{ height: 14, width: '60%', borderRadius: 4, marginBottom: 6 }} />
+                  <div className="skeleton-shimmer" style={{ height: 12, width: '40%', borderRadius: 4 }} />
+                </div>
+                <div className="skeleton-shimmer" style={{ height: 14, width: 50, borderRadius: 4 }} />
+              </div>
+            ))}
           </div>
         ) : recentTxs.length === 0 ? (
           <div className="card">
