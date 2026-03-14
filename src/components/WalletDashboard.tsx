@@ -409,65 +409,74 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       </div>
 
       {/* Bottom spacer for tab bar */}
-      <div style={{ height: 72 }} />
+      <div style={{ height: 88 }} />
 
-      {/* Tab Bar */}
+      {/* Tab Bar — fintech style */}
       <nav style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        height: 64,
-        background: 'var(--bg-primary)',
-        borderTop: '1px solid var(--border)',
-        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        background: 'rgba(15, 23, 42, 0.95)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+        paddingTop: 8,
         zIndex: 100,
       }}>
-        <button
-          onClick={() => setView('home')}
-          style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-            background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0',
-            color: view === 'home' ? 'var(--primary-from)' : 'var(--text-muted)',
-            fontSize: 20,
-          }}
-        >
-          <span>🏠</span>
-          <span style={{ fontSize: 10, fontWeight: 500 }}>Home</span>
-        </button>
-        <button
-          onClick={() => setView('send')}
-          style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-            background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0',
-            color: 'var(--text-muted)',
-            fontSize: 20,
-          }}
-        >
-          <span>↗️</span>
-          <span style={{ fontSize: 10, fontWeight: 500 }}>Send</span>
-        </button>
+        {/* Convert */}
         <button
           onClick={() => setView('swap')}
           style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-            background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0',
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
             color: 'var(--text-muted)',
-            fontSize: 20,
+            transition: 'color 0.2s',
           }}
         >
-          <span>🔄</span>
-          <span style={{ fontSize: 10, fontWeight: 500 }}>Convert</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.3px' }}>Convert</span>
         </button>
+
+        {/* Send — center, elevated FAB style */}
+        <button
+          onClick={() => setView('send')}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', cursor: 'pointer', padding: '0 16px',
+            marginTop: -20,
+          }}
+        >
+          <div style={{
+            width: 52, height: 52, borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--primary-from), var(--primary-to, #8B5CF6))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+            </svg>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--primary-from)', letterSpacing: '0.3px' }}>Send</span>
+        </button>
+
+        {/* Settings */}
         <button
           onClick={() => window.location.hash = '#/settings'}
           style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-            background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0',
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
             color: 'var(--text-muted)',
-            fontSize: 20,
+            transition: 'color 0.2s',
           }}
         >
-          <span>⚙️</span>
-          <span style={{ fontSize: 10, fontWeight: 500 }}>Settings</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.3px' }}>Settings</span>
         </button>
       </nav>
     </div>
