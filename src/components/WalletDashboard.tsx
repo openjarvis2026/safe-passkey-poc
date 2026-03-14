@@ -82,6 +82,7 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   const [copied, setCopied] = useState(false);
   const [headerCopied, setHeaderCopied] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [homeTab, setHomeTab] = useState<'tokens' | 'activity' | 'pending'>('tokens');
 
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
@@ -342,171 +343,206 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         </div>
       </div>
 
-      {/* Token List */}
-      <TokenList 
-        safeAddress={safe.address} 
-        ethBalance={balance} 
-        onTokenSelect={(t, b) => { 
-          setDetailToken({ token: t, balance: b }); 
-          setView('token-detail'); 
-        }} 
-      />
-
-      {/* Pending Approvals */}
-      {pendingApprovals.length > 0 && (
-        <div className="card">
-          <div className="flex-between" style={{ marginBottom: 'var(--spacing-md)' }}>
-            <h3 className="text-heading">
-              Needs Your Approval ({pendingApprovals.length})
-            </h3>
-          </div>
-          {pendingApprovals.map(approval => {
-            const sigCount = approval.confirmations.length;
-            const sigRequired = approval.confirmationsRequired;
-            let icon = '📤';
-            let description = 'Contract interaction';
-
-            if (approval.dataDecoded) {
-              const method = approval.dataDecoded.method;
-              if (method === 'changeThreshold') {
-                icon = '🔧';
-                const newThreshold = approval.dataDecoded.parameters.find(p => p.name === '_threshold')?.value || '?';
-                description = `Change threshold to ${newThreshold}`;
-              } else if (method === 'addOwnerWithThreshold') {
-                icon = '👤';
-                description = 'Add signer';
-              } else if (method === 'removeOwner' || method === 'removeOwnerWithThreshold') {
-                icon = '🚫';
-                description = 'Remove signer';
-              } else if (method === 'transfer') {
-                icon = '💸';
-                const valuePar = approval.dataDecoded.parameters.find(p => p.name === 'value' || p.name === 'amount');
-                const toPar = approval.dataDecoded.parameters.find(p => p.name === 'to' || p.name === 'recipient');
-                description = `Send tokens to ${toPar?.value ? toPar.value.slice(0, 6) + '…' + toPar.value.slice(-4) : 'unknown'}`;
-                if (valuePar) description += ` (${valuePar.value})`;
-              } else {
-                description = method;
-              }
-            } else if (!approval.data || approval.data === '0x' || approval.data === null) {
-              icon = '💸';
-              const ethValue = BigInt(approval.value || '0');
-              description = `Send ${formatEther(ethValue)} ETH to ${approval.to.slice(0, 6)}…${approval.to.slice(-4)}`;
-            }
-
-            const proposerShort = approval.proposer === 'Unknown' ? 'Unknown' : `${approval.proposer.slice(0, 6)}…${approval.proposer.slice(-4)}`;
-            const timeAgo = (() => {
-              const diff = Date.now() - new Date(approval.submissionDate).getTime();
-              const mins = Math.floor(diff / 60000);
-              if (mins < 60) return `${mins}m ago`;
-              const hrs = Math.floor(mins / 60);
-              if (hrs < 24) return `${hrs}h ago`;
-              return `${Math.floor(hrs / 24)}d ago`;
-            })();
-
+      {/* Content Tabs */}
+      <div>
+        {/* Tab Bar */}
+        <div style={{
+          display: 'flex',
+          gap: 0,
+          borderBottom: '2px solid var(--border)',
+          marginBottom: 16,
+        }}>
+          {(['tokens', 'activity', 'pending'] as const).map(tab => {
+            const isActive = homeTab === tab;
+            const label = tab === 'tokens' ? 'Coins' : tab === 'activity' ? 'Activity' : 'Pending';
+            const count = tab === 'pending' ? pendingApprovals.length : undefined;
             return (
-              <div key={approval.safeTxHash} className="flex-between" style={{ 
-                padding: 'var(--spacing-md) 0', 
-                borderBottom: '1px solid var(--border-light)' 
-              }}>
-                <div className="flex-center" style={{ gap: 'var(--spacing-md)', flex: 1 }}>
-                  <div className="avatar avatar-sm" style={{ background: 'var(--card-bg-light)' }}>
-                    {icon}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p className="text-small" style={{ fontWeight: 500, marginBottom: 2 }}>
-                      {description}
-                    </p>
-                    <p className="text-xs text-muted">
-                      by {proposerShort} · {timeAgo} · {sigCount}/{sigRequired} signed
-                    </p>
-                  </div>
-                </div>
-                <button
-                  className="btn btn-primary btn-sm"
-                  style={{ flexShrink: 0, fontSize: 12, padding: '6px 12px' }}
-                  onClick={() => { 
-                    window.location.hash = `#/approve?safeTxHash=${approval.safeTxHash}&safe=${safe.address}`; 
-                  }}
-                >
-                  Review
-                </button>
-              </div>
+              <button
+                key={tab}
+                onClick={() => setHomeTab(tab)}
+                style={{
+                  flex: 1,
+                  padding: '12px 0',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: isActive ? '2px solid var(--primary-from)' : '2px solid transparent',
+                  marginBottom: -2,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                {label}
+                {count !== undefined && count > 0 && (
+                  <span style={{
+                    background: 'var(--danger)',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    borderRadius: 100,
+                    padding: '1px 6px',
+                    minWidth: 18,
+                    textAlign: 'center',
+                    lineHeight: '16px',
+                  }}>
+                    {count}
+                  </span>
+                )}
+              </button>
             );
           })}
         </div>
-      )}
 
-      {/* Recent Activity */}
-      <div>
-        <div className="flex-between" style={{ marginBottom: 'var(--spacing-md)' }}>
-          <h3 className="text-heading">Recent Activity</h3>
-          {recentTxs.length > 0 && (
-            <button 
-              className="btn btn-ghost btn-sm" 
-              style={{ 
-                width: 'auto', 
-                fontSize: 12, 
-                padding: '6px 12px', 
-                color: 'var(--text-accent)' 
-              }}
-              onClick={() => setView('history')}
-            >
-              View All →
-            </button>
-          )}
-        </div>
-        {historyLoading ? (
-          <div className="card" style={{ padding: 0 }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} className="flex-center" style={{ 
-                gap: 'var(--spacing-md)', 
-                padding: 'var(--spacing-md)', 
-                borderBottom: '1px solid var(--border-light)' 
-              }}>
-                <div className="skeleton-shimmer" style={{ 
-                  width: 48, 
-                  height: 48, 
-                  borderRadius: 'var(--radius-full)', 
-                  flexShrink: 0 
-                }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton-shimmer" style={{ 
-                    height: 14, 
-                    width: '60%', 
-                    borderRadius: 4, 
-                    marginBottom: 6 
-                  }} />
-                  <div className="skeleton-shimmer" style={{ 
-                    height: 12, 
-                    width: '40%', 
-                    borderRadius: 4 
-                  }} />
-                </div>
-                <div className="skeleton-shimmer" style={{ 
-                  height: 14, 
-                  width: 50, 
-                  borderRadius: 4 
-                }} />
+        {/* Tab Content */}
+        {homeTab === 'tokens' && (
+          <div className="fade-in">
+            <TokenList 
+              safeAddress={safe.address} 
+              ethBalance={balance} 
+              onTokenSelect={(t, b) => { 
+                setDetailToken({ token: t, balance: b }); 
+                setView('token-detail'); 
+              }} 
+            />
+          </div>
+        )}
+
+        {homeTab === 'activity' && (
+          <div className="fade-in">
+            {historyLoading ? (
+              <div className="card" style={{ padding: 0 }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} style={{ 
+                    display: 'flex', alignItems: 'center',
+                    gap: 12, padding: 14, 
+                    borderBottom: '1px solid var(--border)' 
+                  }}>
+                    <div className="skeleton-shimmer" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div className="skeleton-shimmer" style={{ height: 14, width: '60%', borderRadius: 4, marginBottom: 6 }} />
+                      <div className="skeleton-shimmer" style={{ height: 12, width: '40%', borderRadius: 4 }} />
+                    </div>
+                    <div className="skeleton-shimmer" style={{ height: 14, width: 50, borderRadius: 4 }} />
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : recentTxs.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+                <p style={{ fontSize: 32, marginBottom: 8 }}>📭</p>
+                <p className="text-secondary" style={{ fontSize: 14 }}>No activity yet</p>
+                <p className="text-muted" style={{ fontSize: 12 }}>Send or receive to get started</p>
+              </div>
+            ) : (
+              <div className="card" style={{ padding: 0 }}>
+                {recentTxs.map(tx => (
+                  <TransactionItem key={tx.txHash} transaction={tx} />
+                ))}
+              </div>
+            )}
           </div>
-        ) : recentTxs.length === 0 ? (
-          <div className="card">
-            <p className="text-secondary text-center" style={{ padding: 'var(--spacing-md)' }}>
-              No activity yet — send or receive to get started
-            </p>
-          </div>
-        ) : (
-          <div className="card" style={{ padding: 0 }}>
-            {recentTxs.slice(0, 5).map(tx => (
-              <TransactionItem key={tx.txHash} transaction={tx} />
-            ))}
+        )}
+
+        {homeTab === 'pending' && (
+          <div className="fade-in">
+            {pendingApprovals.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+                <p style={{ fontSize: 32, marginBottom: 8 }}>✅</p>
+                <p className="text-secondary" style={{ fontSize: 14 }}>No pending approvals</p>
+                <p className="text-muted" style={{ fontSize: 12 }}>All caught up!</p>
+              </div>
+            ) : (
+              <div className="card" style={{ padding: 0 }}>
+                {pendingApprovals.map(approval => {
+                  const sigCount = approval.confirmations.length;
+                  const sigRequired = approval.confirmationsRequired;
+                  let icon = '📤';
+                  let description = 'Contract interaction';
+
+                  if (approval.dataDecoded) {
+                    const method = approval.dataDecoded.method;
+                    if (method === 'changeThreshold') {
+                      icon = '🔧';
+                      const newThreshold = approval.dataDecoded.parameters.find(p => p.name === '_threshold')?.value || '?';
+                      description = `Change threshold to ${newThreshold}`;
+                    } else if (method === 'addOwnerWithThreshold') {
+                      icon = '👤';
+                      description = 'Add signer';
+                    } else if (method === 'removeOwner' || method === 'removeOwnerWithThreshold') {
+                      icon = '🚫';
+                      description = 'Remove signer';
+                    } else if (method === 'transfer') {
+                      icon = '💸';
+                      const toPar = approval.dataDecoded.parameters.find(p => p.name === 'to' || p.name === 'recipient');
+                      description = `Send tokens to ${toPar?.value ? toPar.value.slice(0, 6) + '…' + toPar.value.slice(-4) : 'unknown'}`;
+                    } else {
+                      description = method;
+                    }
+                  } else if (!approval.data || approval.data === '0x' || approval.data === null) {
+                    icon = '💸';
+                    const ethValue = BigInt(approval.value || '0');
+                    description = `Send ${formatEther(ethValue)} ETH to ${approval.to.slice(0, 6)}…${approval.to.slice(-4)}`;
+                  }
+
+                  const proposerShort = approval.proposer === 'Unknown' ? 'Unknown' : `${approval.proposer.slice(0, 6)}…${approval.proposer.slice(-4)}`;
+                  const timeAgo = (() => {
+                    const diff = Date.now() - new Date(approval.submissionDate).getTime();
+                    const mins = Math.floor(diff / 60000);
+                    if (mins < 60) return `${mins}m ago`;
+                    const hrs = Math.floor(mins / 60);
+                    if (hrs < 24) return `${hrs}h ago`;
+                    return `${Math.floor(hrs / 24)}d ago`;
+                  })();
+
+                  return (
+                    <div key={approval.safeTxHash} style={{ 
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '14px 16px', 
+                      borderBottom: '1px solid var(--border)' 
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          width: 40, height: 40, borderRadius: '50%',
+                          background: 'var(--bg)', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          fontSize: 18, flexShrink: 0,
+                        }}>
+                          {icon}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>
+                            {description}
+                          </p>
+                          <p className="text-muted" style={{ fontSize: 11 }}>
+                            by {proposerShort} · {timeAgo} · {sigCount}/{sigRequired} signed
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ flexShrink: 0, fontSize: 12, padding: '6px 14px', width: 'auto' }}
+                        onClick={() => { 
+                          window.location.hash = `#/approve?safeTxHash=${approval.safeTxHash}&safe=${safe.address}`; 
+                        }}
+                      >
+                        Review
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Explorer Link */}
-      <div style={{ textAlign: 'center', marginTop: 'var(--spacing-lg)' }}>
+      <div style={{ textAlign: 'center', marginTop: 8 }}>
         <a 
           href={`${EXPLORER}/address/${safe.address}`} 
           target="_blank" 
