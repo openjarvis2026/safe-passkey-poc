@@ -244,105 +244,102 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   // ── HOME VIEW ──
   if (view === 'home') return (
     <div className="fade-in stack-lg">
-      {/* Premium Balance Card */}
-      <div className="card-premium">
-        {/* Status indicator */}
-        <div 
-          className="flex-center"
-          onClick={() => {
-            copy(safe.address);
-            setHeaderCopied(true);
-            setTimeout(() => setHeaderCopied(false), 2000);
-          }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'rgba(255, 255, 255, 0.15)',
-            borderRadius: 'var(--radius-full)',
-            padding: '6px 12px',
-            cursor: 'pointer',
-            marginBottom: 'var(--spacing-lg)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            backdropFilter: 'blur(8px)',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <div style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: headerCopied ? 'var(--accent-light)' : 'var(--accent)',
-            boxShadow: `0 0 8px ${headerCopied ? 'var(--accent-light)' : 'var(--accent)'}`,
-          }} />
-          <span className="text-xs" style={{ 
-            fontFamily: 'var(--font-mono)', 
-            fontWeight: 500,
-            letterSpacing: '0.5px',
-            opacity: 0.9 
-          }}>
-            {headerCopied ? 'Copied!' : `${safe.address.slice(0, 6)}···${safe.address.slice(-4)}`}
-          </span>
-          {!headerCopied ? (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
-          ) : (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          )}
-        </div>
+      {/* Balance Card — premium fintech style */}
+      <div style={{
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: 24,
+        padding: '28px 24px 24px',
+        background: 'linear-gradient(145deg, #4F46E5 0%, #7C3AED 50%, #9333EA 100%)',
+        boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(0,0,0,0.2)',
+        textAlign: 'center',
+        color: '#fff',
+      }}>
+        {/* Decorative orbs */}
+        <div style={{
+          position: 'absolute', top: -40, right: -40, width: 120, height: 120,
+          borderRadius: '50%', background: 'rgba(255,255,255,0.08)', filter: 'blur(1px)',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -30, left: -20, width: 80, height: 80,
+          borderRadius: '50%', background: 'rgba(255,255,255,0.05)', filter: 'blur(1px)',
+        }} />
+        <div style={{
+          position: 'absolute', top: 20, left: 30, width: 40, height: 40,
+          borderRadius: '50%', background: 'rgba(255,255,255,0.04)',
+        }} />
 
-        {/* Balance label */}
-        <p style={{
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: '1.2px',
-          textTransform: 'uppercase',
-          opacity: 0.7,
-          marginBottom: 'var(--spacing-sm)',
-          textAlign: 'center',
-        }}>
-          Total Balance
-        </p>
+        {/* Content (above orbs) */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          {/* Address pill */}
+          <div
+            onClick={() => {
+              copy(safe.address);
+              setHeaderCopied(true);
+              setTimeout(() => setHeaderCopied(false), 2000);
+            }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: headerCopied ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)',
+              borderRadius: 100, padding: '5px 14px', cursor: 'pointer',
+              marginBottom: 20, transition: 'all 0.25s ease',
+              border: '1px solid rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <div style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: '#34D399',
+              boxShadow: '0 0 6px rgba(52, 211, 153, 0.6)',
+            }} />
+            <span style={{
+              fontSize: 12, fontFamily: "'SF Mono', 'Fira Code', monospace",
+              fontWeight: 500, letterSpacing: '0.5px', opacity: 0.95,
+            }}>
+              {headerCopied ? 'Copied!' : `${safe.address.slice(0, 6)}···${safe.address.slice(-4)}`}
+            </span>
+            {!headerCopied ? (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            ) : (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
 
-        {/* Main balance */}
-        {(() => {
-          const totalUSD = tokenBalances.reduce((sum, b) => sum + (b.usdValue || 0), 0);
-          const ethBalFloat = parseFloat(formatEther(balance));
-          const usdFromEth = ethPrice > 0 ? ethBalFloat * ethPrice : 0;
-          const displayUSD = totalUSD > 0 ? totalUSD : usdFromEth;
+          {/* Balance label */}
+          <p style={{
+            fontSize: 11, fontWeight: 600, letterSpacing: '1.5px',
+            textTransform: 'uppercase', opacity: 0.5, marginBottom: 8,
+          }}>Total Balance</p>
 
-          return (
-            <div style={{ textAlign: 'center' }}>
-              <p className="text-balance" style={{
-                marginBottom: 'var(--spacing-sm)',
-                textShadow: '0 2px 16px rgba(0, 0, 0, 0.2)',
-              }}>
-                {displayUSD > 0 ? formatUSDValue(displayUSD) : '$0.00'}
-              </p>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '4px 12px',
-                backdropFilter: 'blur(4px)',
-              }}>
-                <span className="text-small" style={{ 
-                  opacity: 0.9, 
-                  fontWeight: 500,
-                  fontFamily: 'var(--font-mono)',
+          {/* Balance amount */}
+          {(() => {
+            const totalUSD = tokenBalances.reduce((sum, b) => sum + (b.usdValue || 0), 0);
+            const ethBalFloat = parseFloat(formatEther(balance));
+            const usdFromEth = ethPrice > 0 ? ethBalFloat * ethPrice : 0;
+            const displayUSD = totalUSD > 0 ? totalUSD : usdFromEth;
+
+            return (
+              <>
+                <p style={{
+                  fontSize: 44, fontWeight: 800, lineHeight: 1,
+                  letterSpacing: '-1.5px',
+                  textShadow: '0 2px 12px rgba(0,0,0,0.15)',
+                }}>{displayUSD > 0 ? formatUSDValue(displayUSD) : '$0.00'}</p>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  marginTop: 10, background: 'rgba(255,255,255,0.1)',
+                  borderRadius: 8, padding: '4px 10px',
                 }}>
-                  {ethBalFloat.toFixed(4)} ETH
-                </span>
-              </div>
-            </div>
-          );
-        })()}
+                  <span style={{ fontSize: 13, opacity: 0.8, fontWeight: 500 }}>{ethBalFloat.toFixed(4)} ETH</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
       </div>
 
       {/* Token List */}
@@ -636,9 +633,10 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   if (view === 'send') return (
     <div className="fade-in stack-lg">
       {/* Header */}
-      <div className="flex-center" style={{ gap: 'var(--spacing-md)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button 
           className="btn btn-icon" 
+          style={{ width: 44, height: 44, fontSize: 20 }}
           onClick={() => { 
             setView('home'); 
             setSendStatus(''); 
@@ -651,12 +649,9 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
             setSelectedToken(NATIVE_TOKEN);
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
+          ←
         </button>
-        <h2 className="text-title">Send</h2>
-        <div style={{ width: 48 }} /> {/* Spacer */}
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Send</h2>
       </div>
 
       {!showReview && !txHash && (

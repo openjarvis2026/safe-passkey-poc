@@ -109,17 +109,15 @@ export default function Settings({ safe, onBack }: Props) {
   return (
     <div className="fade-in stack-lg">
       {/* Header */}
-      <div className="flex-center" style={{ gap: 'var(--spacing-md)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button 
           className="btn btn-icon"
+          style={{ width: 44, height: 44, fontSize: 20 }}
           onClick={onBack}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
+          ←
         </button>
-        <h2 className="text-title">Settings</h2>
-        <div style={{ width: 48 }} /> {/* Spacer */}
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Settings</h2>
       </div>
 
       {/* Main Settings */}
@@ -130,13 +128,6 @@ export default function Settings({ safe, onBack }: Props) {
           description={`${signerCount} signer${signerCount === 1 ? '' : 's'} • ${threshold} required to approve`}
           value={`${threshold}/${signerCount}`}
           onClick={() => window.location.hash = '#/signers'}
-        />
-
-        <SettingItem
-          icon="📋"
-          title="Transaction History"
-          description="View all your transaction activity"
-          onClick={() => window.location.hash = '#/history'}
         />
 
         <SettingItem

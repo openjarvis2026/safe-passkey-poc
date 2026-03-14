@@ -183,19 +183,18 @@ export default function SwapView({ safe, onBack }: Props) {
   const canSwap = quote && amountIn && parseFloat(amountIn) > 0 && !isLoadingQuote;
 
   return (
-    <div className="fade-in stack-lg">
+    <div className="fade-in stack-lg" style={{ flex: 1, minHeight: 0 }}>
       {/* Header */}
-      <div className="flex-between">
-        <div className="flex-center" style={{ gap: 'var(--spacing-md)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button 
             className="btn btn-icon" 
+            style={{ width: 44, height: 44, fontSize: 20 }}
             onClick={() => { onBack(); resetSwap(); }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
+            ←
           </button>
-          <h2 className="text-title">Convert</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700 }}>Convert</h2>
         </div>
         
         <button 
