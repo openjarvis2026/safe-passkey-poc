@@ -20,3 +20,8 @@ export const publicClient = createPublicClient({
   chain,
   transport: http(),
 });
+
+/** Get fresh nonce for the relayer to avoid race conditions with concurrent users */
+export async function getRelayerNonce(): Promise<number> {
+  return publicClient.getTransactionCount({ address: relayerAccount.address, blockTag: 'pending' });
+}

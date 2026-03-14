@@ -1,5 +1,5 @@
 import { encodeFunctionData, type Hex } from 'viem';
-import { walletClient, publicClient } from './relayer';
+import { walletClient, publicClient, getRelayerNonce } from './relayer';
 
 // Safe deployment addresses (v1.4.1, Base Sepolia)
 const SAFE_SINGLETON = '0x41675C099F32341bf84BFc5382aF534df5C7461a' as const;
@@ -128,12 +128,14 @@ export async function deploySafe(signerAddress: `0x${string}`): Promise<{ txHash
 
   const saltNonce = BigInt(Date.now());
 
+  const nonce = await getRelayerNonce();
   const txHash = await walletClient.writeContract({
     address: SAFE_PROXY_FACTORY,
     abi: PROXY_FACTORY_ABI,
     functionName: 'createProxyWithNonce',
     args: [SAFE_SINGLETON, initializer, saltNonce],
     gas: 500_000n,
+    nonce,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -172,12 +174,14 @@ export async function execTransaction(
 ): Promise<`0x${string}`> {
   const ZERO = '0x0000000000000000000000000000000000000000' as const;
 
+  const relayerNonce = await getRelayerNonce();
   const txHash = await walletClient.writeContract({
     address: safeAddress,
     abi: SAFE_ABI,
     functionName: 'execTransaction',
     args: [to, value, data, operation, 0n, 0n, 0n, ZERO, ZERO, signatures],
     gas: 500_000n,
+    nonce: relayerNonce,
   });
 
   await publicClient.waitForTransactionReceipt({ hash: txHash });
