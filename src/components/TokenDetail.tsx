@@ -151,7 +151,6 @@ export default function TokenDetail({ token, balance, safeAddress, onBack, onSwa
 
       {/* Total Balance Card */}
       <div style={{
-        position: 'relative',
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border)',
         borderRadius: 20,
@@ -166,23 +165,6 @@ export default function TokenDetail({ token, balance, safeAddress, onBack, onSwa
         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
           {formatTokenAmount(totalBalance, token)} {token.symbol}
         </div>
-        
-        {/* Send button */}
-        <button
-          onClick={() => { window.location.hash = ''; /* let parent handle */ onBack(); }}
-          style={{
-            position: 'absolute', top: 20, right: 20,
-            width: 44, height: 44, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--primary-from), var(--primary-to, #8B5CF6))',
-            border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
-          </svg>
-        </button>
       </div>
 
       {/* Chain Breakdown */}
