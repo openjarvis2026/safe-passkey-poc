@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { formatEther } from 'viem';
 import { type SavedSafe } from '../lib/storage';
 import { getOwners, getThreshold, getNonce, execTransaction, encodeChangeThreshold } from '../lib/safe';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
@@ -43,6 +42,7 @@ export default function SignersView({ safe, onBack }: Props) {
   const [shareUrl, setShareUrl] = useState('');
   const [signerHistory, setSignerHistory] = useState<SignerEvent[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [copiedAddr, setCopiedAddr] = useState<string | null>(null);
 
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
@@ -81,17 +81,17 @@ export default function SignersView({ safe, onBack }: Props) {
 
           if (dd.method === 'addOwnerWithThreshold') {
             const owner = dd.parameters?.find((p: any) => p.name === 'owner')?.value || '?';
-            events.push({ method: dd.method, description: `Device ${shortAddr(owner)} added`, timeAgo, icon: '👤' });
+            events.push({ method: dd.method, description: `${shortAddr(owner)} added`, timeAgo, icon: '👤' });
           } else if (dd.method === 'removeOwner') {
             const owner = dd.parameters?.find((p: any) => p.name === 'owner')?.value || '?';
-            events.push({ method: dd.method, description: `Device ${shortAddr(owner)} removed`, timeAgo, icon: '🚫' });
+            events.push({ method: dd.method, description: `${shortAddr(owner)} removed`, timeAgo, icon: '🚫' });
           } else if (dd.method === 'swapOwner') {
             const oldOwner = dd.parameters?.find((p: any) => p.name === 'oldOwner')?.value || '?';
             const newOwner = dd.parameters?.find((p: any) => p.name === 'newOwner')?.value || '?';
-            events.push({ method: dd.method, description: `Swapped ${shortAddr(oldOwner)} → ${shortAddr(newOwner)}`, timeAgo, icon: '🔄' });
+            events.push({ method: dd.method, description: `${shortAddr(oldOwner)} → ${shortAddr(newOwner)}`, timeAgo, icon: '🔄' });
           } else if (dd.method === 'changeThreshold') {
             const t = dd.parameters?.find((p: any) => p.name === '_threshold')?.value || '?';
-            events.push({ method: dd.method, description: `Threshold changed to ${t}`, timeAgo, icon: '🔧' });
+            events.push({ method: dd.method, description: `Threshold → ${t}`, timeAgo, icon: '🔧' });
           }
         }
         setSignerHistory(events);
@@ -152,6 +152,12 @@ export default function SignersView({ safe, onBack }: Props) {
 
   const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
 
+  const handleCopyAddress = (addr: string) => {
+    copy(addr);
+    setCopiedAddr(addr);
+    setTimeout(() => setCopiedAddr(null), 1500);
+  };
+
   const getOwnerLabel = (address: string) => {
     const savedOwner = safe.owners.find(o => o.address.toLowerCase() === address.toLowerCase());
     if (savedOwner && savedOwner.credentialId) return 'This Device';
@@ -166,129 +172,150 @@ export default function SignersView({ safe, onBack }: Props) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button className="btn btn-icon" style={{ width: 44, height: 44, fontSize: 20 }} onClick={onBack}>←</button>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Signers</h2>
-        <span className="badge badge-success" style={{ marginLeft: 'auto' }}>{threshold} of {ownerCount} required</span>
+        <h2 style={{ fontSize: 20, fontWeight: 700, flex: 1 }}>Signers</h2>
       </div>
 
-      {/* Section A — Current Signers */}
+      {/* Card 1 — Signers + Threshold + Add Device (unified) */}
       <div className="card">
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Current Signers</h3>
-        <div className="stack">
-          {(owners.length > 0 ? owners : safe.owners.map(o => o.address)).map(addr => {
-            const isLocal = localOwner && localOwner.address.toLowerCase() === addr.toLowerCase();
-            const label = getOwnerLabel(addr);
-            return (
-              <div key={addr} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div className="avatar" style={{ background: avatarColor(addr) }}>
-                  {addr.slice(2, 4).toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500 }}>{label}</p>
-                  <p className="text-muted text-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{shortAddr(addr)}</p>
-                </div>
-                {isLocal && <span className="badge badge-success">You</span>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Section B — Add Device */}
-      <button
-        className="btn btn-primary"
-        style={{ width: '100%' }}
-        onClick={() => window.location.hash = `#/invite?safe=${safe.address}`}
-      >
-        + Add Device
-      </button>
-
-      {/* Section C — Threshold Management */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        {/* Threshold summary row */}
+        <div style={{ 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid var(--border)'
+        }}>
           <div>
-            <h3 style={{ fontSize: 16, fontWeight: 600 }}>Signature Threshold</h3>
-            <p className="text-muted text-sm">Signatures required to execute transactions</p>
+            <p style={{ fontSize: 14, fontWeight: 600 }}>Required signatures</p>
+            <p className="text-muted" style={{ fontSize: 12 }}>{threshold} of {ownerCount} to execute</p>
           </div>
-          <span className="badge badge-success">{threshold}</span>
+          {ownerCount > 1 && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: 12, padding: '6px 10px', height: 'auto', color: 'var(--primary-from)' }}
+              onClick={() => setShowThresholdChange(!showThresholdChange)}
+            >
+              {showThresholdChange ? 'Cancel' : 'Change'}
+            </button>
+          )}
         </div>
 
-        {!showThresholdChange ? (
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setShowThresholdChange(true)}
-            disabled={ownerCount <= 1}
-          >
-            Change Threshold
-          </button>
-        ) : (
-          <div className="stack">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <label className="text-secondary text-sm">New threshold:</label>
-              <select className="select" value={newThreshold} onChange={e => setNewThreshold(Number(e.target.value))}>
+        {/* Threshold change (inline, no separate card) */}
+        {showThresholdChange && (
+          <div style={{ 
+            paddingBottom: 16, marginBottom: 16, borderBottom: '1px solid var(--border)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <label className="text-secondary text-sm" style={{ flex: 1 }}>New threshold:</label>
+              <select className="select" style={{ width: 64 }} value={newThreshold} onChange={e => setNewThreshold(Number(e.target.value))}>
                 {Array.from({ length: ownerCount }, (_, i) => i + 1).map(n => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-            </div>
-            <div className="row">
-              <button className="btn btn-secondary btn-sm flex-1" onClick={() => {
-                setShowThresholdChange(false);
-                setNewThreshold(threshold);
-                setThresholdStatus('');
-                setShareUrl('');
-              }}>Cancel</button>
               <button
-                className="btn btn-primary btn-sm flex-1"
+                className="btn btn-primary btn-sm"
+                style={{ padding: '6px 14px' }}
                 onClick={handleThresholdChange}
                 disabled={newThreshold === threshold || thresholdStatus === 'Signing…' || thresholdStatus === 'Executing…'}
               >
                 {thresholdStatus === 'Signing…' || thresholdStatus === 'Executing…' ?
                   <><div className="spinner" /> {thresholdStatus}</> :
-                  'Update Threshold'
+                  'Apply'
                 }
               </button>
             </div>
             {thresholdStatus && !thresholdStatus.includes('Signing') && !thresholdStatus.includes('Executing') && (
-              <div className="card fade-in">
-                <p style={{ fontSize: 14 }}>{thresholdStatus}</p>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12 }}>
+                <p style={{ fontSize: 13 }}>{thresholdStatus}</p>
                 {shareUrl && (
-                  <div style={{ marginTop: 12 }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => copy(shareUrl)}>📋 Copy Share Link</button>
-                  </div>
+                  <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => copy(shareUrl)}>📋 Copy Share Link</button>
                 )}
               </div>
             )}
           </div>
         )}
+
+        {/* Signer list */}
+        <div className="stack" style={{ gap: 4 }}>
+          {(owners.length > 0 ? owners : safe.owners.map(o => o.address)).map(addr => {
+            const isLocal = localOwner && localOwner.address.toLowerCase() === addr.toLowerCase();
+            const label = getOwnerLabel(addr);
+            const isCopied = copiedAddr === addr;
+            return (
+              <div
+                key={addr}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
+                  transition: 'background 0.15s',
+                  background: isCopied ? 'var(--bg-secondary)' : 'transparent',
+                }}
+                onClick={() => handleCopyAddress(addr)}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="avatar" style={{ background: avatarColor(addr), width: 36, height: 36, fontSize: 12 }}>
+                  {addr.slice(2, 4).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 500 }}>{label}</p>
+                  <p className="text-muted text-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {isCopied ? '✅ Copied!' : shortAddr(addr)}
+                  </p>
+                </div>
+                {isLocal && <span className="badge badge-success" style={{ fontSize: 11 }}>You</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Add Device — inside the card */}
+        <button
+          className="btn btn-secondary"
+          style={{ width: '100%', marginTop: 16 }}
+          onClick={() => window.location.hash = `#/invite?safe=${safe.address}`}
+        >
+          + Add Device
+        </button>
       </div>
 
-      {/* Section D — Signer Activity History */}
+      {/* Card 2 — Activity History */}
       <div className="card">
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Activity History</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Security Log</h3>
         {historyLoading ? (
           <div className="stack">
-            {[0, 1, 2].map(i => (
+            {[0, 1].map(i => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div className="skeleton-shimmer" style={{ width: 36, height: 36, borderRadius: 18, flexShrink: 0 }} />
+                <div className="skeleton-shimmer" style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
-                  <div className="skeleton-shimmer" style={{ height: 14, width: '70%', borderRadius: 4, marginBottom: 6 }} />
-                  <div className="skeleton-shimmer" style={{ height: 12, width: '40%', borderRadius: 4 }} />
+                  <div className="skeleton-shimmer" style={{ height: 13, width: '65%', borderRadius: 4, marginBottom: 6 }} />
+                  <div className="skeleton-shimmer" style={{ height: 11, width: '35%', borderRadius: 4 }} />
                 </div>
               </div>
             ))}
           </div>
         ) : signerHistory.length === 0 ? (
-          <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No signer changes yet</p>
+          <div style={{ textAlign: 'center', padding: '20px 12px' }}>
+            <p style={{ fontSize: 24, marginBottom: 8 }}>🛡️</p>
+            <p className="text-muted text-sm">Your wallet security log will appear here</p>
+            <p className="text-muted" style={{ fontSize: 11 }}>Signer additions, removals, and threshold changes are tracked automatically</p>
+          </div>
         ) : (
-          <div className="stack">
+          <div className="stack" style={{ gap: 0 }}>
             {signerHistory.map((event, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: i < signerHistory.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+              <div key={i} style={{ 
+                display: 'flex', alignItems: 'center', gap: 10, 
+                padding: '10px 0',
+                borderBottom: i < signerHistory.length - 1 ? '1px solid var(--border)' : 'none' 
+              }}>
+                <div style={{ 
+                  width: 32, height: 32, borderRadius: 16, 
+                  background: 'var(--bg-secondary)', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                  fontSize: 14, flexShrink: 0 
+                }}>
                   {event.icon}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500 }}>{event.description}</p>
-                  <p className="text-muted text-xs">{event.timeAgo}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 500 }}>{event.description}</p>
+                  <p className="text-muted" style={{ fontSize: 11 }}>{event.timeAgo}</p>
                 </div>
               </div>
             ))}
