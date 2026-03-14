@@ -249,7 +249,22 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           title="Tap to copy address"
         >{headerCopied ? '✅ Copied!' : '🔐 My Wallet'}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <SafeSelector currentSafe={safe} onSafeChanged={onSafeChanged} />
+          <button
+            className="btn btn-icon"
+            style={{ width: 40, height: 40 }}
+            onClick={() => {
+              copy(safe.address);
+              setHeaderCopied(true);
+              setTimeout(() => setHeaderCopied(false), 2000);
+            }}
+            title="Copy address"
+          >
+            {headerCopied ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-from)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+            )}
+          </button>
         </div>
       </div>
 
