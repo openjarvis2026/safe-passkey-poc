@@ -248,10 +248,11 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           }}
           title="Tap to copy address"
         >{headerCopied ? '✅ Copied!' : '🔐 My Wallet'}</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className="text-muted" style={{ fontSize: 13, fontFamily: 'monospace' }}>{safe.address.slice(0, 6)}…{safe.address.slice(-4)}</span>
           <button
             className="btn btn-icon"
-            style={{ width: 40, height: 40 }}
+            style={{ width: 32, height: 32 }}
             onClick={() => {
               copy(safe.address);
               setHeaderCopied(true);
