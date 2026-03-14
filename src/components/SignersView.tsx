@@ -33,8 +33,8 @@ interface SignerEvent {
 }
 
 const SAFE_EVENTS = {
-  AddedOwner: parseAbiItem('event AddedOwner(address owner)'),
-  RemovedOwner: parseAbiItem('event RemovedOwner(address owner)'),
+  AddedOwner: parseAbiItem('event AddedOwner(address indexed owner)'),
+  RemovedOwner: parseAbiItem('event RemovedOwner(address indexed owner)'),
   ChangedThreshold: parseAbiItem('event ChangedThreshold(uint256 threshold)'),
 } as const;
 
