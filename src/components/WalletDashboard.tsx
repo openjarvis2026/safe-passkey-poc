@@ -44,6 +44,7 @@ const extractClientDataFields = (clientDataJSON: string, challengeOffset: number
 export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: Props) {
   const [view, setView] = useState<View>('home');
   const [balance, setBalance] = useState<bigint>(0n);
+  const [ethPrice, setEthPrice] = useState<number>(0);
   const [owners, setOwners] = useState<`0x${string}`[]>([]);
   const [threshold, setThreshold] = useState(safe.threshold);
 
@@ -84,6 +85,14 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
 
   const localOwner = safe.owners.find(o => o.credentialId);
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
+
+  // Fetch ETH price
+  useEffect(() => {
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
+      .then(r => r.json())
+      .then(d => { if (d?.ethereum?.usd) setEthPrice(d.ethereum.usd); })
+      .catch(() => {});
+  }, []);
 
   // Poll balance + owners + history
   useEffect(() => {
@@ -311,27 +320,25 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           {/* Balance amount */}
           {(() => {
             const totalUSD = tokenBalances.reduce((sum, b) => sum + (b.usdValue || 0), 0);
-            return totalUSD > 0 ? (
+            const ethBalFloat = parseFloat(formatEther(balance));
+            const usdFromEth = ethPrice > 0 ? ethBalFloat * ethPrice : 0;
+            const displayUSD = totalUSD > 0 ? totalUSD : usdFromEth;
+
+            return (
               <>
                 <p style={{
                   fontSize: 44, fontWeight: 800, lineHeight: 1,
                   letterSpacing: '-1.5px',
                   textShadow: '0 2px 12px rgba(0,0,0,0.15)',
-                }}>{formatUSDValue(totalUSD)}</p>
+                }}>{displayUSD > 0 ? formatUSDValue(displayUSD) : '$0.00'}</p>
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   marginTop: 10, background: 'rgba(255,255,255,0.1)',
                   borderRadius: 8, padding: '4px 10px',
                 }}>
-                  <span style={{ fontSize: 13, opacity: 0.8, fontWeight: 500 }}>{formatEther(balance)} ETH</span>
+                  <span style={{ fontSize: 13, opacity: 0.8, fontWeight: 500 }}>{ethBalFloat.toFixed(4)} ETH</span>
                 </div>
               </>
-            ) : (
-              <p style={{
-                fontSize: 44, fontWeight: 800, lineHeight: 1,
-                letterSpacing: '-1.5px',
-                textShadow: '0 2px 12px rgba(0,0,0,0.15)',
-              }}>{parseFloat(formatEther(balance)).toFixed(4)} <span style={{ fontSize: 22, fontWeight: 600, opacity: 0.7 }}>ETH</span></p>
             );
           })()}
         </div>
