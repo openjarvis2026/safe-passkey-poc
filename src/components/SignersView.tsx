@@ -71,26 +71,16 @@ export default function SignersView({ safe, onBack }: Props) {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        // Get Safe creation block to limit scan range (fallback to last 100k blocks)
+        // Public RPCs limit eth_getLogs to ~10k blocks. Scan recent 9,999 blocks.
+        // For a recently created Safe this covers all events.
         const currentBlock = await publicClient.getBlockNumber();
-        const fromBlock = currentBlock > 100_000n ? currentBlock - 100_000n : 0n;
+        const fromBlock = currentBlock > 9_999n ? currentBlock - 9_999n : 0n;
+        const addr = safe.address as `0x${string}`;
 
         const [addedLogs, removedLogs, thresholdLogs] = await Promise.all([
-          publicClient.getLogs({
-            address: safe.address as `0x${string}`,
-            event: SAFE_EVENTS.AddedOwner,
-            fromBlock,
-          }),
-          publicClient.getLogs({
-            address: safe.address as `0x${string}`,
-            event: SAFE_EVENTS.RemovedOwner,
-            fromBlock,
-          }),
-          publicClient.getLogs({
-            address: safe.address as `0x${string}`,
-            event: SAFE_EVENTS.ChangedThreshold,
-            fromBlock,
-          }),
+          publicClient.getLogs({ address: addr, event: SAFE_EVENTS.AddedOwner, fromBlock, toBlock: currentBlock }),
+          publicClient.getLogs({ address: addr, event: SAFE_EVENTS.RemovedOwner, fromBlock, toBlock: currentBlock }),
+          publicClient.getLogs({ address: addr, event: SAFE_EVENTS.ChangedThreshold, fromBlock, toBlock: currentBlock }),
         ]);
 
         const events: (SignerEvent & { blockNumber: bigint; logIndex: number })[] = [];
