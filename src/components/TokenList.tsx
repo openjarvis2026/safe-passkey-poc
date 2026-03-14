@@ -62,83 +62,244 @@ export default function TokenList({ safeAddress, ethBalance, onTokenSelect }: Pr
   if (loading) {
     return (
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="spinner spinner-dark" style={{ width: 20, height: 20 }} />
-          <span style={{ marginLeft: 8, fontSize: 14 }}>Loading tokens...</span>
+        <div className="flex-between" style={{ marginBottom: 'var(--spacing-lg)' }}>
+          <div className="skeleton-shimmer" style={{ 
+            height: 20, 
+            width: 80, 
+            borderRadius: 'var(--radius-sm)' 
+          }} />
+          <div className="skeleton-shimmer" style={{ 
+            height: 16, 
+            width: 60, 
+            borderRadius: 'var(--radius-sm)' 
+          }} />
+        </div>
+
+        <div className="token-list">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="token-item">
+              <div className="skeleton-shimmer" style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: '50%',
+                flexShrink: 0
+              }} />
+              
+              <div className="token-info">
+                <div className="skeleton-shimmer" style={{ 
+                  height: 16, 
+                  width: '60%', 
+                  borderRadius: 'var(--radius-sm)',
+                  marginBottom: 4
+                }} />
+                <div className="skeleton-shimmer" style={{ 
+                  height: 12, 
+                  width: '80%', 
+                  borderRadius: 'var(--radius-sm)' 
+                }} />
+              </div>
+              
+              <div className="token-balance">
+                <div className="skeleton-shimmer" style={{ 
+                  height: 16, 
+                  width: 60, 
+                  borderRadius: 'var(--radius-sm)',
+                  marginBottom: 4,
+                  marginLeft: 'auto'
+                }} />
+                <div className="skeleton-shimmer" style={{ 
+                  height: 12, 
+                  width: 40, 
+                  borderRadius: 'var(--radius-sm)',
+                  marginLeft: 'auto'
+                }} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
+  const visibleTokens = balances
+    .filter(b => b.token.symbol !== 'WETH') // Hide WETH
+    .filter(b => {
+      const hasBalance = parseFloat(b.formattedBalance) > 0;
+      const isNative = b.token.symbol === 'ETH';
+      return isNative || hasBalance || showAll;
+    });
+
+  const zeroBalanceTokens = balances.filter(b => 
+    b.token.symbol !== 'WETH' && 
+    b.token.symbol !== 'ETH' && 
+    parseFloat(b.formattedBalance) === 0
+  );
+
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>Tokens</h3>
+      {/* Header */}
+      <div className="flex-between" style={{ marginBottom: 'var(--spacing-lg)' }}>
+        <h3 className="text-heading">Assets</h3>
         {totalUSD > 0 && (
-          <span className="text-secondary text-sm">
+          <span className="text-secondary text-small" style={{ fontWeight: 500 }}>
             {formatUSDValue(totalUSD)}
           </span>
         )}
       </div>
 
+      {/* Token List */}
       <div className="token-list">
-        {balances
-          .filter(b => b.token.symbol !== 'WETH') // Hide WETH
-          .filter(b => {
-            const hasBalance = parseFloat(b.formattedBalance) > 0;
-            const isNative = b.token.symbol === 'ETH';
-            return isNative || hasBalance || showAll;
-          })
-          .map(balance => {
-          const { token, formattedBalance, usdValue } = balance;
-          const hasBalance = parseFloat(formattedBalance) > 0;
-          
-          return (
-            <div 
-              key={token.address} 
-              className={`token-item ${!hasBalance ? 'token-item-zero' : ''}`}
-              onClick={() => onTokenSelect?.(token, balance)}
-              style={{ cursor: onTokenSelect ? 'pointer' : undefined }}
-            >
-              <TokenIcon symbol={token.symbol} size={36} />
-              
-              <div className="token-info">
-                <div className="token-symbol">{token.symbol}</div>
-                <div className="token-name">{token.name}</div>
-              </div>
-              
-              <div className="token-balance">
-                <div className="balance-amount">
-                  {formatTokenAmount(balance.balance, token)}
-                </div>
-                {usdValue !== null && hasBalance && (
-                  <div className="balance-usd">
-                    {formatUSDValue(usdValue)}
+        {visibleTokens.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: 'var(--spacing-xl) var(--spacing-lg)',
+            color: 'var(--text-secondary)'
+          }}>
+            <div style={{ 
+              fontSize: 32, 
+              marginBottom: 'var(--spacing-sm)',
+              opacity: 0.5 
+            }}>
+              💳
+            </div>
+            <p className="text-small">No tokens yet</p>
+            <p className="text-xs text-muted">
+              Receive tokens to see them here
+            </p>
+          </div>
+        ) : (
+          visibleTokens.map((balance, index) => {
+            const { token, formattedBalance, usdValue } = balance;
+            const hasBalance = parseFloat(formattedBalance) > 0;
+            const isInteractive = !!onTokenSelect;
+            
+            return (
+              <div 
+                key={token.address} 
+                className={`token-item ${!hasBalance ? 'token-item-zero' : ''} ${isInteractive ? 'card-interactive' : ''}`}
+                onClick={() => onTokenSelect?.(token, balance)}
+                style={{ 
+                  cursor: isInteractive ? 'pointer' : 'default',
+                  padding: 'var(--spacing-md) 0',
+                  borderRadius: isInteractive ? 'var(--radius-lg)' : 0,
+                  margin: isInteractive ? '0 calc(-1 * var(--spacing-md))' : 0,
+                  paddingLeft: isInteractive ? 'var(--spacing-md)' : 0,
+                  paddingRight: isInteractive ? 'var(--spacing-md)' : 0,
+                  transition: 'all 0.2s ease',
+                  animation: `fadeIn 0.3s ease-out ${index * 0.1}s both`,
+                }}
+              >
+                <TokenIcon symbol={token.symbol} size={48} />
+                
+                <div className="token-info">
+                  <div className="token-symbol" style={{ 
+                    fontSize: 16, 
+                    fontWeight: 600,
+                    color: hasBalance ? 'var(--text-primary)' : 'var(--text-muted)'
+                  }}>
+                    {token.symbol}
                   </div>
+                  <div className="token-name" style={{
+                    fontSize: 12,
+                    color: 'var(--text-secondary)',
+                    fontWeight: 400
+                  }}>
+                    {token.name}
+                  </div>
+                </div>
+                
+                <div className="token-balance">
+                  <div className="balance-amount" style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: hasBalance ? 'var(--text-primary)' : 'var(--text-muted)',
+                    textAlign: 'right',
+                    fontFamily: hasBalance ? 'var(--font-body)' : 'var(--font-body)'
+                  }}>
+                    {hasBalance ? formatTokenAmount(balance.balance, token) : '0'}
+                  </div>
+                  {usdValue !== null && hasBalance && (
+                    <div className="balance-usd" style={{
+                      fontSize: 12,
+                      color: 'var(--text-secondary)',
+                      textAlign: 'right',
+                      fontWeight: 500
+                    }}>
+                      {formatUSDValue(usdValue)}
+                    </div>
+                  )}
+                  {!hasBalance && (
+                    <div className="balance-usd" style={{
+                      fontSize: 12,
+                      color: 'var(--text-muted)',
+                      textAlign: 'right'
+                    }}>
+                      No balance
+                    </div>
+                  )}
+                </div>
+
+                {/* Interactive arrow */}
+                {isInteractive && hasBalance && (
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="var(--text-muted)" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    style={{ 
+                      marginLeft: 'var(--spacing-sm)',
+                      opacity: 0.6,
+                      transition: 'opacity 0.2s ease'
+                    }}
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
-      {balances.some(b => b.token.symbol !== 'WETH' && b.token.symbol !== 'ETH' && parseFloat(b.formattedBalance) === 0) && !showAll && (
-        <button 
-          className="btn btn-ghost btn-sm" 
-          style={{ width: '100%', marginTop: 8, fontSize: 13, color: 'var(--text-secondary)' }}
-          onClick={() => setShowAll(true)}
-        >
-          Show all tokens ▾
-        </button>
-      )}
-      {showAll && (
-        <button 
-          className="btn btn-ghost btn-sm" 
-          style={{ width: '100%', marginTop: 8, fontSize: 13, color: 'var(--text-secondary)' }}
-          onClick={() => setShowAll(false)}
-        >
-          Hide zero balances ▴
-        </button>
+      {/* Toggle Zero Balances */}
+      {zeroBalanceTokens.length > 0 && (
+        <div style={{ 
+          marginTop: 'var(--spacing-md)',
+          borderTop: '1px solid var(--border-light)',
+          paddingTop: 'var(--spacing-md)'
+        }}>
+          <button 
+            className="btn btn-ghost btn-sm" 
+            style={{ 
+              width: '100%',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              padding: 'var(--spacing-sm)',
+              height: 'auto'
+            }}
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+                Hide zero balances
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+                Show {zeroBalanceTokens.length} more token{zeroBalanceTokens.length === 1 ? '' : 's'}
+              </>
+            )}
+          </button>
+        </div>
       )}
     </div>
   );

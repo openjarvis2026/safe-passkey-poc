@@ -70,8 +70,6 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   // Receive
   const receiveQrRef = useRef<HTMLCanvasElement>(null);
 
-  // Removed add owner state - now using InviteSigner component
-
   // Transaction history (recent activity) — seed from cache for instant display
   const [recentTxs, setRecentTxs] = useState<SafeTransaction[]>(() => {
     const cached = cacheGet<Array<SafeTransaction & { amount: string }>>(`tx_history_${safe.address.toLowerCase()}`);
@@ -224,8 +222,6 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
     }
   };
 
-  // handleAddOwner removed - now using InviteSigner component
-
   const copy = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
   const share = (url: string) => navigator.share?.({ url }).catch(() => {});
 
@@ -248,115 +244,123 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   // ── HOME VIEW ──
   if (view === 'home') return (
     <div className="fade-in stack-lg">
-      {/* Balance Card — premium fintech style */}
-      <div style={{
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: 24,
-        padding: '28px 24px 24px',
-        background: 'linear-gradient(145deg, #4F46E5 0%, #7C3AED 50%, #9333EA 100%)',
-        boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(0,0,0,0.2)',
-        textAlign: 'center',
-        color: '#fff',
-      }}>
-        {/* Decorative orbs */}
-        <div style={{
-          position: 'absolute', top: -40, right: -40, width: 120, height: 120,
-          borderRadius: '50%', background: 'rgba(255,255,255,0.08)', filter: 'blur(1px)',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -30, left: -20, width: 80, height: 80,
-          borderRadius: '50%', background: 'rgba(255,255,255,0.05)', filter: 'blur(1px)',
-        }} />
-        <div style={{
-          position: 'absolute', top: 20, left: 30, width: 40, height: 40,
-          borderRadius: '50%', background: 'rgba(255,255,255,0.04)',
-        }} />
-
-        {/* Content (above orbs) */}
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          {/* Address pill */}
-          <div
-            onClick={() => {
-              copy(safe.address);
-              setHeaderCopied(true);
-              setTimeout(() => setHeaderCopied(false), 2000);
-            }}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: headerCopied ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.12)',
-              borderRadius: 100, padding: '5px 14px', cursor: 'pointer',
-              marginBottom: 20, transition: 'all 0.25s ease',
-              border: '1px solid rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(8px)',
-            }}
-          >
-            <div style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: headerCopied ? '#34D399' : '#34D399',
-              boxShadow: '0 0 6px rgba(52, 211, 153, 0.6)',
-            }} />
-            <span style={{
-              fontSize: 12, fontFamily: "'SF Mono', 'Fira Code', monospace",
-              fontWeight: 500, letterSpacing: '0.5px', opacity: 0.95,
-            }}>
-              {headerCopied ? 'Copied!' : `${safe.address.slice(0, 6)}···${safe.address.slice(-4)}`}
-            </span>
-            {!headerCopied ? (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            ) : (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
-          </div>
-
-          {/* Balance label */}
-          <p style={{
-            fontSize: 11, fontWeight: 600, letterSpacing: '1.5px',
-            textTransform: 'uppercase', opacity: 0.5, marginBottom: 8,
-          }}>Total Balance</p>
-
-          {/* Balance amount */}
-          {(() => {
-            const totalUSD = tokenBalances.reduce((sum, b) => sum + (b.usdValue || 0), 0);
-            const ethBalFloat = parseFloat(formatEther(balance));
-            const usdFromEth = ethPrice > 0 ? ethBalFloat * ethPrice : 0;
-            const displayUSD = totalUSD > 0 ? totalUSD : usdFromEth;
-
-            return (
-              <>
-                <p style={{
-                  fontSize: 44, fontWeight: 800, lineHeight: 1,
-                  letterSpacing: '-1.5px',
-                  textShadow: '0 2px 12px rgba(0,0,0,0.15)',
-                }}>{displayUSD > 0 ? formatUSDValue(displayUSD) : '$0.00'}</p>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  marginTop: 10, background: 'rgba(255,255,255,0.1)',
-                  borderRadius: 8, padding: '4px 10px',
-                }}>
-                  <span style={{ fontSize: 13, opacity: 0.8, fontWeight: 500 }}>{ethBalFloat.toFixed(4)} ETH</span>
-                </div>
-              </>
-            );
-          })()}
+      {/* Premium Balance Card */}
+      <div className="card-premium">
+        {/* Status indicator */}
+        <div 
+          className="flex-center"
+          onClick={() => {
+            copy(safe.address);
+            setHeaderCopied(true);
+            setTimeout(() => setHeaderCopied(false), 2000);
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(255, 255, 255, 0.15)',
+            borderRadius: 'var(--radius-full)',
+            padding: '6px 12px',
+            cursor: 'pointer',
+            marginBottom: 'var(--spacing-lg)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(8px)',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <div style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: headerCopied ? 'var(--accent-light)' : 'var(--accent)',
+            boxShadow: `0 0 8px ${headerCopied ? 'var(--accent-light)' : 'var(--accent)'}`,
+          }} />
+          <span className="text-xs" style={{ 
+            fontFamily: 'var(--font-mono)', 
+            fontWeight: 500,
+            letterSpacing: '0.5px',
+            opacity: 0.9 
+          }}>
+            {headerCopied ? 'Copied!' : `${safe.address.slice(0, 6)}···${safe.address.slice(-4)}`}
+          </span>
+          {!headerCopied ? (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          ) : (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
         </div>
+
+        {/* Balance label */}
+        <p style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '1.2px',
+          textTransform: 'uppercase',
+          opacity: 0.7,
+          marginBottom: 'var(--spacing-sm)',
+          textAlign: 'center',
+        }}>
+          Total Balance
+        </p>
+
+        {/* Main balance */}
+        {(() => {
+          const totalUSD = tokenBalances.reduce((sum, b) => sum + (b.usdValue || 0), 0);
+          const ethBalFloat = parseFloat(formatEther(balance));
+          const usdFromEth = ethPrice > 0 ? ethBalFloat * ethPrice : 0;
+          const displayUSD = totalUSD > 0 ? totalUSD : usdFromEth;
+
+          return (
+            <div style={{ textAlign: 'center' }}>
+              <p className="text-balance" style={{
+                marginBottom: 'var(--spacing-sm)',
+                textShadow: '0 2px 16px rgba(0, 0, 0, 0.2)',
+              }}>
+                {displayUSD > 0 ? formatUSDValue(displayUSD) : '$0.00'}
+              </p>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '4px 12px',
+                backdropFilter: 'blur(4px)',
+              }}>
+                <span className="text-small" style={{ 
+                  opacity: 0.9, 
+                  fontWeight: 500,
+                  fontFamily: 'var(--font-mono)',
+                }}>
+                  {ethBalFloat.toFixed(4)} ETH
+                </span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
-      {/* Action buttons removed — Send & Convert are in the tab bar */}
-
       {/* Token List */}
-      <TokenList safeAddress={safe.address} ethBalance={balance} onTokenSelect={(t, b) => { setDetailToken({ token: t, balance: b }); setView('token-detail'); }} />
+      <TokenList 
+        safeAddress={safe.address} 
+        ethBalance={balance} 
+        onTokenSelect={(t, b) => { 
+          setDetailToken({ token: t, balance: b }); 
+          setView('token-detail'); 
+        }} 
+      />
 
       {/* Pending Approvals */}
       {pendingApprovals.length > 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
-              ⏳ Needs Your Approval ({pendingApprovals.length})
+        <div className="card">
+          <div className="flex-between" style={{ marginBottom: 'var(--spacing-md)' }}>
+            <h3 className="text-heading">
+              Needs Your Approval ({pendingApprovals.length})
             </h3>
           </div>
           {pendingApprovals.map(approval => {
@@ -387,7 +391,6 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
                 description = method;
               }
             } else if (!approval.data || approval.data === '0x' || approval.data === null) {
-              // Native ETH send
               icon = '💸';
               const ethValue = BigInt(approval.value || '0');
               description = `Send ${formatEther(ethValue)} ETH to ${approval.to.slice(0, 6)}…${approval.to.slice(-4)}`;
@@ -404,20 +407,29 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
             })();
 
             return (
-              <div key={approval.safeTxHash} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                  {icon}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>{description}</p>
-                  <p className="text-muted" style={{ fontSize: 12, margin: 0 }}>
-                    by {proposerShort} · {timeAgo} · {sigCount}/{sigRequired} signed
-                  </p>
+              <div key={approval.safeTxHash} className="flex-between" style={{ 
+                padding: 'var(--spacing-md) 0', 
+                borderBottom: '1px solid var(--border-light)' 
+              }}>
+                <div className="flex-center" style={{ gap: 'var(--spacing-md)', flex: 1 }}>
+                  <div className="avatar avatar-sm" style={{ background: 'var(--card-bg-light)' }}>
+                    {icon}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p className="text-small" style={{ fontWeight: 500, marginBottom: 2 }}>
+                      {description}
+                    </p>
+                    <p className="text-xs text-muted">
+                      by {proposerShort} · {timeAgo} · {sigCount}/{sigRequired} signed
+                    </p>
+                  </div>
                 </div>
                 <button
                   className="btn btn-primary btn-sm"
                   style={{ flexShrink: 0, fontSize: 12, padding: '6px 12px' }}
-                  onClick={() => { window.location.hash = `#/approve?safeTxHash=${approval.safeTxHash}&safe=${safe.address}`; }}
+                  onClick={() => { 
+                    window.location.hash = `#/approve?safeTxHash=${approval.safeTxHash}&safe=${safe.address}`; 
+                  }}
                 >
                   Review
                 </button>
@@ -429,12 +441,17 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
 
       {/* Recent Activity */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Recent Activity</h3>
+        <div className="flex-between" style={{ marginBottom: 'var(--spacing-md)' }}>
+          <h3 className="text-heading">Recent Activity</h3>
           {recentTxs.length > 0 && (
             <button 
               className="btn btn-ghost btn-sm" 
-              style={{ width: 'auto', fontSize: 12, padding: '6px 12px', color: 'var(--primary-from)' }}
+              style={{ 
+                width: 'auto', 
+                fontSize: 12, 
+                padding: '6px 12px', 
+                color: 'var(--text-accent)' 
+              }}
               onClick={() => setView('history')}
             >
               View All →
@@ -442,24 +459,48 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           )}
         </div>
         {historyLoading ? (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card" style={{ padding: 0 }}>
             {[0, 1, 2].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                <div className="skeleton-shimmer" style={{ width: 40, height: 40, borderRadius: 20, flexShrink: 0 }} />
+              <div key={i} className="flex-center" style={{ 
+                gap: 'var(--spacing-md)', 
+                padding: 'var(--spacing-md)', 
+                borderBottom: '1px solid var(--border-light)' 
+              }}>
+                <div className="skeleton-shimmer" style={{ 
+                  width: 48, 
+                  height: 48, 
+                  borderRadius: 'var(--radius-full)', 
+                  flexShrink: 0 
+                }} />
                 <div style={{ flex: 1 }}>
-                  <div className="skeleton-shimmer" style={{ height: 14, width: '60%', borderRadius: 4, marginBottom: 6 }} />
-                  <div className="skeleton-shimmer" style={{ height: 12, width: '40%', borderRadius: 4 }} />
+                  <div className="skeleton-shimmer" style={{ 
+                    height: 14, 
+                    width: '60%', 
+                    borderRadius: 4, 
+                    marginBottom: 6 
+                  }} />
+                  <div className="skeleton-shimmer" style={{ 
+                    height: 12, 
+                    width: '40%', 
+                    borderRadius: 4 
+                  }} />
                 </div>
-                <div className="skeleton-shimmer" style={{ height: 14, width: 50, borderRadius: 4 }} />
+                <div className="skeleton-shimmer" style={{ 
+                  height: 14, 
+                  width: 50, 
+                  borderRadius: 4 
+                }} />
               </div>
             ))}
           </div>
         ) : recentTxs.length === 0 ? (
           <div className="card">
-            <p className="text-muted text-sm" style={{ textAlign: 'center', padding: 12 }}>No activity yet — send or receive to get started</p>
+            <p className="text-secondary text-center" style={{ padding: 'var(--spacing-md)' }}>
+              No activity yet — send or receive to get started
+            </p>
           </div>
         ) : (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card" style={{ padding: 0 }}>
             {recentTxs.slice(0, 5).map(tx => (
               <TransactionItem key={tx.txHash} transaction={tx} />
             ))}
@@ -467,82 +508,125 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         )}
       </div>
 
-      {/* Safe address */}
-      <div style={{ textAlign: 'center' }}>
-        <a href={`${EXPLORER}/address/${safe.address}`} target="_blank" rel="noreferrer" className="text-muted text-xs">
+      {/* Explorer Link */}
+      <div style={{ textAlign: 'center', marginTop: 'var(--spacing-lg)' }}>
+        <a 
+          href={`${EXPLORER}/address/${safe.address}`} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="text-muted text-xs"
+          style={{ opacity: 0.7 }}
+        >
           View on Explorer ↗
         </a>
       </div>
 
       {/* Bottom spacer for tab bar */}
-      <div style={{ height: 88 }} />
+      <div style={{ height: 100 }} />
 
-      {/* Tab Bar — fintech style */}
+      {/* Modern Tab Bar */}
       <nav style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(15, 23, 42, 0.95)',
+        position: 'fixed',
+        bottom: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: 428,
+        background: 'rgba(10, 14, 39, 0.95)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
-        paddingTop: 8,
+        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        display: 'flex',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingTop: 'var(--spacing-sm)',
+        paddingBottom: 'max(var(--spacing-sm), env(safe-area-inset-bottom))',
         zIndex: 100,
       }}>
         {/* Convert */}
         <button
           onClick={() => setView('swap')}
           style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-            background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 'var(--spacing-xs) 0',
             color: 'var(--text-muted)',
-            transition: 'color 0.2s',
+            transition: 'color 0.2s ease',
           }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
-            <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="17 1 21 5 17 9" />
+            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <polyline points="7 23 3 19 7 15" />
+            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
           </svg>
-          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.3px' }}>Convert</span>
+          <span className="text-xs" style={{ fontWeight: 500 }}>Convert</span>
         </button>
 
-        {/* Send — center, elevated FAB style */}
+        {/* Send - Elevated FAB */}
         <button
           onClick={() => setView('send')}
           style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-            background: 'none', border: 'none', cursor: 'pointer', padding: '0 16px',
-            marginTop: -20,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '0 var(--spacing-md)',
+            marginTop: -24,
           }}
         >
           <div style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--primary-from), var(--primary-to, #8B5CF6))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'var(--primary-gradient)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4), 0 4px 8px rgba(0, 0, 0, 0.2)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            border: '2px solid rgba(255, 255, 255, 0.1)',
           }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+              <line x1="12" y1="19" x2="12" y2="5" />
+              <polyline points="5 12 12 5 19 12" />
             </svg>
           </div>
-          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--primary-from)', letterSpacing: '0.3px' }}>Send</span>
+          <span className="text-xs text-accent" style={{ fontWeight: 600 }}>Send</span>
         </button>
 
         {/* Settings */}
         <button
           onClick={() => window.location.hash = '#/settings'}
           style={{
-            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-            background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 'var(--spacing-xs) 0',
             color: 'var(--text-muted)',
-            transition: 'color 0.2s',
+            transition: 'color 0.2s ease',
           }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
-          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.3px' }}>Settings</span>
+          <span className="text-xs" style={{ fontWeight: 500 }}>Settings</span>
         </button>
       </nav>
     </div>
@@ -551,125 +635,201 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   // ── SEND VIEW ──
   if (view === 'send') return (
     <div className="fade-in stack-lg">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="btn btn-icon" style={{ width: 44, height: 44, fontSize: 20 }} onClick={() => { 
-          setView('home'); 
-          setSendStatus(''); 
-          setTxHash(''); 
-          setShareUrl('');
-          setSendTo('');
-          setSendAmount('');
-          setSendMemo('');
-          setShowReview(false);
-          setSelectedToken(NATIVE_TOKEN);
-        }}>←</button>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Send</h2>
+      {/* Header */}
+      <div className="flex-center" style={{ gap: 'var(--spacing-md)' }}>
+        <button 
+          className="btn btn-icon" 
+          onClick={() => { 
+            setView('home'); 
+            setSendStatus(''); 
+            setTxHash(''); 
+            setShareUrl('');
+            setSendTo('');
+            setSendAmount('');
+            setSendMemo('');
+            setShowReview(false);
+            setSelectedToken(NATIVE_TOKEN);
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <h2 className="text-title">Send</h2>
+        <div style={{ width: 48 }} /> {/* Spacer */}
       </div>
 
       {!showReview && !txHash && (
-        <>
+        <div className="stack-md">
+          {/* Recipient Input */}
           <div className="stack">
-            <input className="input" placeholder="Recipient address" value={sendTo} onChange={e => setSendTo(e.target.value)} />
-            
+            <label className="text-small text-secondary">Recipient</label>
+            <input 
+              className="input" 
+              placeholder="0x... or ENS name" 
+              value={sendTo} 
+              onChange={e => setSendTo(e.target.value)} 
+            />
+          </div>
+          
+          {/* Amount & Token Selector */}
+          <div className="stack">
+            <label className="text-small text-secondary">Amount</label>
             <div className="send-token-input">
               <button 
                 className="send-token-selector"
                 onClick={() => setShowTokenSelector(true)}
               >
                 <TokenIcon symbol={selectedToken.symbol} size={24} />
-                <span>{selectedToken.symbol}</span>
-                <span style={{ fontSize: 12, opacity: 0.7 }}>▼</span>
+                <span className="text-small" style={{ fontWeight: 600 }}>
+                  {selectedToken.symbol}
+                </span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </button>
               
               <input 
                 className="send-amount-input"
-                placeholder={`Amount (${selectedToken.symbol})`}
+                placeholder="0.00"
                 value={sendAmount}
                 onChange={e => setSendAmount(e.target.value)}
                 inputMode="decimal"
               />
             </div>
+          </div>
 
-            {/* Available balance + Max */}
-            {(() => {
-              const tb = tokenBalances.find(b => b.token.address.toLowerCase() === selectedToken.address.toLowerCase());
-              if (!tb) return null;
-              return (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="text-muted text-xs">
-                    Available: {formatTokenAmount(tb.balance, tb.token)}{tb.usdValue ? ` (${formatUSDValue(tb.usdValue)})` : ''}
-                  </span>
-                  <button className="btn btn-ghost btn-sm" style={{ fontSize: 12, padding: '4px 8px', height: 'auto', color: 'var(--primary-from)' }} onClick={() => {
+          {/* Available Balance */}
+          {(() => {
+            const tb = tokenBalances.find(b => b.token.address.toLowerCase() === selectedToken.address.toLowerCase());
+            if (!tb) return null;
+            return (
+              <div className="flex-between">
+                <span className="text-xs text-secondary">
+                  Available: {formatTokenAmount(tb.balance, tb.token)}
+                  {tb.usdValue ? ` (${formatUSDValue(tb.usdValue)})` : ''}
+                </span>
+                <button 
+                  className="btn btn-ghost btn-sm" 
+                  style={{ 
+                    fontSize: 12, 
+                    padding: '4px 8px', 
+                    height: 'auto', 
+                    color: 'var(--text-accent)' 
+                  }} 
+                  onClick={() => {
                     if (selectedToken.address === '0x0000000000000000000000000000000000000000') {
                       const max = Math.max(0, parseFloat(tb.formattedBalance) - 0.0005);
                       setSendAmount(max > 0 ? max.toString() : '');
                     } else {
                       setSendAmount(tb.formattedBalance);
                     }
-                  }}>
-                    Max
-                  </button>
-                </div>
-              );
-            })()}
+                  }}
+                >
+                  Max
+                </button>
+              </div>
+            );
+          })()}
 
-            {/* Memo */}
-            <input className="input" placeholder="Add a note (optional)" value={sendMemo} onChange={e => setSendMemo(e.target.value)} style={{ fontSize: 14 }} />
+          {/* Memo */}
+          <div className="stack">
+            <label className="text-small text-secondary">Note (optional)</label>
+            <input 
+              className="input" 
+              placeholder="Add a note for your records" 
+              value={sendMemo} 
+              onChange={e => setSendMemo(e.target.value)} 
+            />
           </div>
 
-          {/* Burn address / self-send warnings */}
+          {/* Warnings */}
           {sendTo && sendTo.toLowerCase().startsWith('0x000000000000') && (
-            <div className="card" style={{ background: 'rgba(255,59,48,0.1)', border: '1px solid var(--danger)', padding: 12 }}>
-              <p style={{ color: 'var(--danger)', fontSize: 13, margin: 0 }}>⚠️ Warning: This appears to be a burn address. Funds sent here cannot be recovered.</p>
+            <div className="card" style={{ 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              border: '1px solid var(--danger)' 
+            }}>
+              <p className="text-danger text-small">
+                ⚠️ Warning: This appears to be a burn address. Funds sent here cannot be recovered.
+              </p>
             </div>
           )}
+          
           {sendTo && sendTo.toLowerCase() === safe.address.toLowerCase() && (
-            <div className="card" style={{ background: 'rgba(255,59,48,0.1)', border: '1px solid var(--danger)', padding: 12 }}>
-              <p style={{ color: 'var(--danger)', fontSize: 13, margin: 0 }}>⚠️ You're sending to your own wallet address.</p>
+            <div className="card" style={{ 
+              background: 'rgba(239, 68, 68, 0.1)', 
+              border: '1px solid var(--danger)' 
+            }}>
+              <p className="text-danger text-small">
+                ⚠️ You're sending to your own wallet address.
+              </p>
             </div>
           )}
 
-          <button className="btn btn-primary" disabled={!sendTo || !sendAmount} onClick={() => setShowReview(true)}>
-            Review
+          <button 
+            className="btn btn-primary mt-auto" 
+            disabled={!sendTo || !sendAmount} 
+            onClick={() => setShowReview(true)}
+          >
+            Review Transaction
           </button>
-        </>
+        </div>
       )}
 
-      {/* Review card */}
+      {/* Review Screen */}
       {showReview && !txHash && (
         <div className="card fade-in">
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Review Transaction</h3>
-          <div className="stack" style={{ gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className="text-secondary text-sm">Sending</span>
-              <span style={{ fontWeight: 600 }}>
-                {sendAmount} {selectedToken.symbol}
+          <h3 className="text-heading" style={{ marginBottom: 'var(--spacing-lg)' }}>
+            Review Transaction
+          </h3>
+          
+          <div className="stack-md">
+            <div className="flex-between">
+              <span className="text-secondary">Sending</span>
+              <div style={{ textAlign: 'right' }}>
+                <span className="text-body" style={{ fontWeight: 600 }}>
+                  {sendAmount} {selectedToken.symbol}
+                </span>
                 {(() => {
                   const tb = tokenBalances.find(b => b.token.address.toLowerCase() === selectedToken.address.toLowerCase());
                   if (!tb || !tb.usdValue) return null;
                   const ratio = tb.balance > 0n ? tb.usdValue / parseFloat(tb.formattedBalance) : 0;
                   const usd = parseFloat(sendAmount) * ratio;
-                  return usd > 0 ? <span className="text-muted" style={{ fontWeight: 400 }}> ({formatUSDValue(usd)})</span> : null;
+                  return usd > 0 ? (
+                    <div className="text-xs text-muted">{formatUSDValue(usd)}</div>
+                  ) : null;
                 })()}
+              </div>
+            </div>
+            
+            <div className="flex-between">
+              <span className="text-secondary">To</span>
+              <span className="text-small" style={{ fontFamily: 'var(--font-mono)' }}>
+                {shortAddr(sendTo)}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className="text-secondary text-sm">To</span>
-              <span style={{ fontSize: 14, fontFamily: 'monospace' }}>{shortAddr(sendTo)}</span>
+            
+            <div className="flex-between">
+              <span className="text-secondary">Network fee</span>
+              <span className="text-small text-accent">Sponsored ✨</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className="text-secondary text-sm">Network fee</span>
-              <span style={{ fontSize: 14 }}>Sponsored ✨</span>
-            </div>
+            
             {sendMemo && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-secondary text-sm">Note</span>
-                <span className="text-sm">{sendMemo}</span>
+              <div className="flex-between">
+                <span className="text-secondary">Note</span>
+                <span className="text-small">{sendMemo}</span>
               </div>
             )}
           </div>
-          <div style={{ marginTop: 16 }}>
-            <button className="btn btn-ghost btn-sm" style={{ marginBottom: 12 }} onClick={() => setShowReview(false)}>← Edit</button>
+
+          <div className="stack-md" style={{ marginTop: 'var(--spacing-xl)' }}>
+            <button 
+              className="btn btn-ghost" 
+              onClick={() => setShowReview(false)}
+            >
+              ← Edit Transaction
+            </button>
+            
             {threshold <= 1 ? (
               <SlideToConfirm
                 label="Slide to send"
@@ -684,47 +844,125 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
                 }
               />
             ) : (
-              <button className="btn btn-primary" onClick={handleSend} disabled={sendStatus === 'Signing…' || sendStatus === 'Executing…'}>
-                {sendStatus === 'Signing…' || sendStatus === 'Executing…' ? <><div className="spinner" /> {sendStatus}</> : 'Confirm & Sign'}
+              <button 
+                className="btn btn-primary" 
+                onClick={handleSend} 
+                disabled={sendStatus === 'Signing…' || sendStatus === 'Executing…'}
+              >
+                {sendStatus === 'Signing…' || sendStatus === 'Executing…' ? (
+                  <>
+                    <div className="spinner" /> 
+                    {sendStatus}
+                  </>
+                ) : (
+                  'Confirm & Sign'
+                )}
               </button>
             )}
           </div>
         </div>
       )}
 
+      {/* Success State */}
       {txHash && (
-        <div className="card fade-in" style={{ textAlign: 'center', padding: 24 }}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        <div className="card fade-in" style={{ textAlign: 'center' }}>
+          <div className="flex-center" style={{ 
+            width: 80, 
+            height: 80, 
+            borderRadius: '50%', 
+            background: 'var(--accent)', 
+            margin: '0 auto var(--spacing-lg)' 
+          }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
           </div>
-          <p style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Sent!</p>
-          <p className="text-secondary" style={{ fontSize: 15, marginBottom: 16 }}>
+          
+          <h3 className="text-title" style={{ marginBottom: 'var(--spacing-sm)' }}>
+            Transaction Sent!
+          </h3>
+          
+          <p className="text-secondary" style={{ marginBottom: 'var(--spacing-lg)' }}>
             {sendAmount} {selectedToken.symbol} to {shortAddr(sendTo)}
           </p>
-          <a href={`${EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-from)', fontSize: 14, fontWeight: 500 }}>
+          
+          <a 
+            href={`${EXPLORER}/tx/${txHash}`} 
+            target="_blank" 
+            rel="noreferrer" 
+            className="text-accent text-small" 
+            style={{ 
+              fontWeight: 500,
+              marginBottom: 'var(--spacing-xl)',
+              display: 'block'
+            }}
+          >
             View on Explorer ↗
           </a>
-          <div className="row" style={{ marginTop: 20, gap: 12 }}>
-            <button className="btn btn-secondary flex-1" onClick={() => { setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setSendMemo(''); setShareUrl(''); setShowReview(false); }}>Send More</button>
-            <button className="btn btn-primary flex-1" onClick={() => { setView('home'); setSendStatus(''); setTxHash(''); setSendTo(''); setSendAmount(''); setSendMemo(''); setShareUrl(''); setShowReview(false); setSelectedToken(NATIVE_TOKEN); }}>Back to Wallet</button>
+          
+          <div className="action-buttons">
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => { 
+                setSendStatus(''); 
+                setTxHash(''); 
+                setSendTo(''); 
+                setSendAmount(''); 
+                setSendMemo(''); 
+                setShareUrl(''); 
+                setShowReview(false); 
+              }}
+            >
+              Send Again
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => { 
+                setView('home'); 
+                setSendStatus(''); 
+                setTxHash(''); 
+                setSendTo(''); 
+                setSendAmount(''); 
+                setSendMemo(''); 
+                setShareUrl(''); 
+                setShowReview(false); 
+                setSelectedToken(NATIVE_TOKEN); 
+              }}
+            >
+              Back to Home
+            </button>
           </div>
         </div>
       )}
 
+      {/* Status Messages */}
       {sendStatus && sendStatus !== 'Signing…' && sendStatus !== 'Executing…' && !txHash && (
         <div className="card fade-in">
-          <p style={{ fontSize: 14, marginBottom: 8 }}>{sendStatus}</p>
+          <p className="text-small">{sendStatus}</p>
         </div>
       )}
 
+      {/* Share URL for Multi-sig */}
       {shareUrl && (
         <div className="card fade-in" style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Share for approval</p>
-          <canvas ref={shareQrRef} style={{ marginBottom: 12 }} />
-          <div className="row">
-            <button className="btn btn-secondary btn-sm flex-1" onClick={() => copy(shareUrl)}>📋 Copy</button>
+          <h3 className="text-heading" style={{ marginBottom: 'var(--spacing-md)' }}>
+            Share for Approval
+          </h3>
+          <canvas ref={shareQrRef} style={{ marginBottom: 'var(--spacing-md)' }} />
+          <div className="action-buttons">
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => copy(shareUrl)}
+            >
+              📋 Copy Link
+            </button>
             {typeof navigator.share === 'function' && (
-              <button className="btn btn-primary btn-sm flex-1" onClick={() => share(shareUrl)}>📤 Share</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => share(shareUrl)}
+              >
+                📤 Share
+              </button>
             )}
           </div>
         </div>
@@ -745,32 +983,59 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
   // ── RECEIVE VIEW ──
   if (view === 'receive') return (
     <div className="fade-in stack-lg">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="btn btn-icon" style={{ width: 44, height: 44, fontSize: 20 }} onClick={() => setView('home')}>←</button>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Receive</h2>
+      {/* Header */}
+      <div className="flex-center" style={{ gap: 'var(--spacing-md)' }}>
+        <button className="btn btn-icon" onClick={() => setView('home')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <h2 className="text-title">Receive</h2>
+        <div style={{ width: 48 }} />
       </div>
 
       <div className="card" style={{ textAlign: 'center' }}>
-        <canvas ref={receiveQrRef} style={{ marginBottom: 16 }} />
-        <p className="text-secondary text-sm" style={{ marginBottom: 12 }}>Share this address to receive funds</p>
-        <div className="addr-chip" style={{ marginBottom: 12, fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all', letterSpacing: '0.5px' }}>
-          {safe.address.slice(0, 6) + ' ' + safe.address.slice(6).match(/.{1,4}/g)!.join(' ')}
+        <canvas ref={receiveQrRef} style={{ 
+          marginBottom: 'var(--spacing-lg)',
+          border: '4px solid var(--card-bg-light)',
+          borderRadius: 'var(--radius-md)'
+        }} />
+        
+        <p className="text-secondary text-small" style={{ marginBottom: 'var(--spacing-md)' }}>
+          Share this address to receive funds
+        </p>
+        
+        <div className="addr-chip" style={{ 
+          marginBottom: 'var(--spacing-lg)', 
+          wordBreak: 'break-all',
+          padding: 'var(--spacing-sm) var(--spacing-md)'
+        }}>
+          {safe.address}
         </div>
-        <div className="row" style={{ gap: 8 }}>
-          <button className="btn btn-primary btn-sm flex-1" onClick={() => {
-            copy(safe.address);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}>{copied ? 'Copied! ✓' : '📋 Copy Address'}</button>
+        
+        <div className="action-buttons">
+          <button 
+            className="btn btn-primary" 
+            onClick={() => {
+              copy(safe.address);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+          >
+            {copied ? 'Copied! ✓' : '📋 Copy Address'}
+          </button>
           {typeof navigator.share === 'function' && (
-            <button className="btn btn-secondary btn-sm flex-1" onClick={() => navigator.share({ text: safe.address }).catch(() => {})}>📤 Share</button>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => navigator.share({ text: safe.address }).catch(() => {})}
+            >
+              📤 Share
+            </button>
           )}
         </div>
       </div>
     </div>
   );
-
-  // Add-owner view removed - now using InviteSigner component
 
   // ── HISTORY VIEW ──
   if (view === 'history') return (
