@@ -252,6 +252,17 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
           <SafeSelector currentSafe={safe} onSafeChanged={onSafeChanged} />
           <button 
             className="btn btn-icon" 
+            style={{ width: 40, height: 40, fontSize: 14, position: 'relative' }} 
+            onClick={() => window.location.hash = '#/signers'}
+            title="Signers"
+          >
+            👥 {owners.length || safe.owners.length}
+            {pendingApprovals.some(a => a.dataDecoded && ['addOwnerWithThreshold', 'removeOwner', 'swapOwner', 'changeThreshold'].includes(a.dataDecoded.method)) && (
+              <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} />
+            )}
+          </button>
+          <button 
+            className="btn btn-icon" 
             style={{ width: 40, height: 40, fontSize: 16 }} 
             onClick={() => window.location.hash = '#/settings'}
             title="Settings"
@@ -292,34 +303,6 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
 
       {/* Token List */}
       <TokenList safeAddress={safe.address} ethBalance={balance} />
-
-      {/* Owners */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Your Devices</h3>
-          <span className="badge badge-success">{owners.length || safe.owners.length} {(owners.length || safe.owners.length) === 1 ? 'device' : 'devices'}</span>
-        </div>
-        <div className="stack">
-          {(owners.length > 0 ? owners : safe.owners.map(o => o.address)).map(addr => {
-            const isLocal = localOwner && localOwner.address.toLowerCase() === addr.toLowerCase();
-            return (
-              <div key={addr} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div className="avatar" style={{ background: avatarColor(addr) }}>
-                  {addr.slice(2, 4).toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 500 }}>{isLocal ? 'This Device' : `Device ${addr.slice(2, 6)}`}</p>
-                  <p className="text-muted text-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{shortAddr(addr)}</p>
-                </div>
-                {isLocal && <span className="badge badge-success">You</span>}
-              </div>
-            );
-          })}
-        </div>
-        <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => window.location.hash = `#/invite?safe=${safe.address}`}>
-          + Add Device
-        </button>
-      </div>
 
       {/* Pending Approvals */}
       {pendingApprovals.length > 0 && (

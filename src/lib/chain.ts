@@ -4,38 +4,43 @@ import { baseSepolia as viemBaseSepolia } from 'viem/chains';
 /**
  * Chain configuration — reads from environment variables.
  * 
- * Set these in your .env to point at a different chain (e.g. CoBuilders Chain):
+ * To use a custom chain, set ALL of these in .env:
  *   VITE_CHAIN_ID=8453
- *   VITE_CHAIN_RPC_URL=https://cobuilders-chain-production.up.railway.app
- *   VITE_CHAIN_NAME=CoBuilders Chain
- *   VITE_EXPLORER_URL=  (leave empty if no explorer)
+ *   VITE_CHAIN_RPC_URL=https://your-rpc.example.com
+ *   VITE_CHAIN_NAME=My Chain
+ *   VITE_EXPLORER_URL=https://explorer.example.com
  * 
- * Defaults to Base Sepolia if not set.
+ * Defaults to Base Sepolia if VITE_CHAIN_ID is not set.
  */
 
 const envChainId = import.meta.env.VITE_CHAIN_ID
   ? Number(import.meta.env.VITE_CHAIN_ID)
   : undefined;
 
-const envRpcUrl = import.meta.env.VITE_CHAIN_RPC_URL as string | undefined;
-const envChainName = import.meta.env.VITE_CHAIN_NAME as string | undefined;
-const envExplorerUrl = import.meta.env.VITE_EXPLORER_URL as string | undefined;
+// Only use custom RPC if a custom chain ID is also set
+// This prevents accidentally using a non-Base-Sepolia RPC with Base Sepolia contracts
+const useCustomChain = envChainId !== undefined;
+const envRpcUrl = useCustomChain ? (import.meta.env.VITE_CHAIN_RPC_URL as string | undefined) : undefined;
+const envChainName = useCustomChain ? (import.meta.env.VITE_CHAIN_NAME as string | undefined) : undefined;
+const envExplorerUrl = useCustomChain ? (import.meta.env.VITE_EXPLORER_URL as string | undefined) : undefined;
+
+const BASE_SEPOLIA_RPC = 'https://sepolia.base.org';
 
 // Default: Base Sepolia
 const defaultChain: Chain = {
   ...viemBaseSepolia,
   rpcUrls: {
-    default: { http: [envRpcUrl ?? 'https://sepolia.base.org'] },
+    default: { http: [BASE_SEPOLIA_RPC] },
   },
 };
 
-export const chain: Chain = envChainId
+export const chain: Chain = useCustomChain
   ? {
-      id: envChainId,
+      id: envChainId!,
       name: envChainName ?? `Chain ${envChainId}`,
       nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
       rpcUrls: {
-        default: { http: [envRpcUrl ?? 'https://sepolia.base.org'] },
+        default: { http: [envRpcUrl ?? BASE_SEPOLIA_RPC] },
       },
       ...(envExplorerUrl
         ? { blockExplorers: { default: { name: 'Explorer', url: envExplorerUrl } } }

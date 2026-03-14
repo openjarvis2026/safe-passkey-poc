@@ -47,11 +47,20 @@ export async function getSignerAddress(x: bigint, y: bigint): Promise<`0x${strin
 }
 
 export async function deploySignerProxy(x: bigint, y: bigint): Promise<`0x${string}`> {
+  // Check if signer already deployed (CREATE2 produces same address)
+  const signerAddr = await getSignerAddress(x, y);
+  const code = await publicClient.getCode({ address: signerAddr });
+  if (code && code !== '0x') {
+    // Already deployed — no need to re-deploy
+    return '0x' + '0'.repeat(64) as `0x${string}`;
+  }
+
   const hash = await walletClient.writeContract({
     address: SIGNER_FACTORY,
     abi: FACTORY_ABI,
     functionName: 'createSigner',
     args: [x, y, VERIFIERS],
+    gas: 200_000n, // explicit gas limit to avoid estimation issues
   });
 
   await publicClient.waitForTransactionReceipt({ hash });

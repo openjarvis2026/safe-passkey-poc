@@ -7,6 +7,7 @@ import JoinWallet from './components/JoinWallet';
 import ApproveTransaction from './components/ApproveTransaction';
 import Settings from './components/Settings';
 import InviteSigner from './components/InviteSigner';
+import SignersView from './components/SignersView';
 
 export default function App() {
   const [route, setRoute] = useState<Route>(parseRoute());
@@ -97,6 +98,9 @@ export default function App() {
       )}
       {route.page === 'settings' && savedSafe && (
         <Settings safe={savedSafe} onBack={() => window.location.hash = '#/'} />
+      )}
+      {route.page === 'signers' && savedSafe && (
+        <SignersView safe={savedSafe} onBack={() => window.location.hash = '#/'} />
       )}
       {route.page === 'invite' && savedSafe && route.safeAddress === savedSafe.address && (
         <InviteSigner safe={savedSafe} onBack={() => window.location.hash = '#/'} />
