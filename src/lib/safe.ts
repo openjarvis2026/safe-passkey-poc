@@ -133,6 +133,7 @@ export async function deploySafe(signerAddress: `0x${string}`): Promise<{ txHash
     abi: PROXY_FACTORY_ABI,
     functionName: 'createProxyWithNonce',
     args: [SAFE_SINGLETON, initializer, saltNonce],
+    gas: 500_000n,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -176,6 +177,7 @@ export async function execTransaction(
     abi: SAFE_ABI,
     functionName: 'execTransaction',
     args: [to, value, data, operation, 0n, 0n, 0n, ZERO, ZERO, signatures],
+    gas: 500_000n,
   });
 
   await publicClient.waitForTransactionReceipt({ hash: txHash });
