@@ -250,17 +250,6 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
         >{headerCopied ? '✅ Copied!' : '🔐 My Wallet'}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <SafeSelector currentSafe={safe} onSafeChanged={onSafeChanged} />
-          <button 
-            className="btn btn-icon" 
-            style={{ width: 40, height: 40, fontSize: 14, position: 'relative' }} 
-            onClick={() => window.location.hash = '#/signers'}
-            title="Signers"
-          >
-            👥 {owners.length || safe.owners.length}
-            {pendingApprovals.some(a => a.dataDecoded && ['addOwnerWithThreshold', 'removeOwner', 'swapOwner', 'changeThreshold'].includes(a.dataDecoded.method)) && (
-              <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} />
-            )}
-          </button>
         </div>
       </div>
 
