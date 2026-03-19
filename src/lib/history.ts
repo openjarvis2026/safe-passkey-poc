@@ -17,7 +17,7 @@ const HISTORY_CACHE_KEY = (addr: string) => `tx_history_${addr.toLowerCase()}`;
 // Normalized transaction interface
 export interface SafeTransaction {
   txHash: string;
-  type: 'send' | 'receive' | 'ownerChange' | 'thresholdChange' | 'unknown';
+  type: 'send' | 'receive' | 'ownerChange' | 'thresholdChange' | 'unknown' | 'swap';
   nonce?: string;
   to: `0x${string}`;
   from: `0x${string}`;
@@ -28,6 +28,14 @@ export interface SafeTransaction {
   blockNumber?: number;
   safe: `0x${string}`;
   executionDate?: string;
+  // Swap-specific fields (only present when type === 'swap')
+  swapTokenIn?: Token;
+  swapTokenOut?: Token;
+  swapAmountIn?: bigint;
+  swapAmountOut?: bigint;
+  exchangeRate?: string;
+  protocolFee?: bigint;
+  protocolFeeToken?: Token;
 }
 
 // Safe Transaction Service API response types
@@ -311,16 +319,31 @@ export async function fetchSafeNonce(safeAddress: `0x${string}`): Promise<number
 
 // Fetch transaction history from Safe Transaction Service API
 // Serializable version of SafeTransaction (BigInt → string)
-interface SerializedSafeTransaction extends Omit<SafeTransaction, 'amount'> {
+interface SerializedSafeTransaction extends Omit<SafeTransaction, 'amount' | 'swapAmountIn' | 'swapAmountOut' | 'protocolFee'> {
   amount: string;
+  swapAmountIn?: string;
+  swapAmountOut?: string;
+  protocolFee?: string;
 }
 
 function serializeTx(tx: SafeTransaction): SerializedSafeTransaction {
-  return { ...tx, amount: tx.amount.toString() };
+  return {
+    ...tx,
+    amount: tx.amount.toString(),
+    swapAmountIn: tx.swapAmountIn?.toString(),
+    swapAmountOut: tx.swapAmountOut?.toString(),
+    protocolFee: tx.protocolFee?.toString(),
+  };
 }
 
 function deserializeTx(tx: SerializedSafeTransaction): SafeTransaction {
-  return { ...tx, amount: BigInt(tx.amount) };
+  return {
+    ...tx,
+    amount: BigInt(tx.amount),
+    swapAmountIn: tx.swapAmountIn !== undefined ? BigInt(tx.swapAmountIn) : undefined,
+    swapAmountOut: tx.swapAmountOut !== undefined ? BigInt(tx.swapAmountOut) : undefined,
+    protocolFee: tx.protocolFee !== undefined ? BigInt(tx.protocolFee) : undefined,
+  };
 }
 
 /**
@@ -445,6 +468,10 @@ export async function fetchTransactionHistory(
     // Merge locally cached sent transactions (always reliable)
     const localTxs = getLocalTransactions(checksummedAddress);
     transactions.push(...localTxs);
+
+    // Merge locally cached swap transactions
+    const localSwapTxs = getLocalSwapTransactions(checksummedAddress);
+    transactions.push(...localSwapTxs);
 
     if (transactions.length === 0) {
       return [];
@@ -598,6 +625,7 @@ async function fetchOnChainTransactions(
 // We cache sent transactions in localStorage so they appear in history immediately.
 
 const LOCAL_TX_KEY = 'simply_sent_transactions';
+const LOCAL_SWAP_TX_KEY = 'simply_swap_transactions';
 
 interface LocalTxRecord {
   txHash: string;
@@ -606,6 +634,19 @@ interface LocalTxRecord {
   amount: string; // stringified bigint
   token: Token;
   timestamp: string;
+}
+
+interface LocalSwapTxRecord {
+  txHash: string;
+  safeAddress: string;
+  tokenIn: Token;
+  tokenOut: Token;
+  amountIn: string; // stringified bigint
+  amountOut: string; // stringified bigint
+  feeAmount: string; // stringified bigint
+  exchangeRate: string;
+  timestamp: string;
+  status: 'confirmed' | 'pending';
 }
 
 export function cacheLocalTransaction(
@@ -630,6 +671,97 @@ export function cacheLocalTransaction(
     localStorage.setItem(LOCAL_TX_KEY, JSON.stringify(existing));
   } catch (e) {
     console.warn('Failed to cache local transaction:', e);
+  }
+}
+
+/**
+ * Cache a completed or pending swap transaction in localStorage.
+ * This ensures swaps appear in transaction history immediately after execution.
+ */
+export function cacheLocalSwapTransaction(
+  safeAddress: `0x${string}`,
+  txHash: string,
+  tokenIn: Token,
+  tokenOut: Token,
+  amountIn: bigint,
+  amountOut: bigint,
+  feeAmount: bigint,
+  exchangeRate: string,
+  status: 'confirmed' | 'pending' = 'confirmed'
+): void {
+  try {
+    const existing: LocalSwapTxRecord[] = JSON.parse(localStorage.getItem(LOCAL_SWAP_TX_KEY) || '[]');
+    // Remove any existing record with same txHash (to allow status updates)
+    const filtered = existing.filter(r => r.txHash !== txHash);
+    filtered.push({
+      txHash,
+      safeAddress,
+      tokenIn,
+      tokenOut,
+      amountIn: amountIn.toString(),
+      amountOut: amountOut.toString(),
+      feeAmount: feeAmount.toString(),
+      exchangeRate,
+      timestamp: new Date().toISOString(),
+      status,
+    });
+    // Keep last 100 records
+    if (filtered.length > 100) filtered.splice(0, filtered.length - 100);
+    localStorage.setItem(LOCAL_SWAP_TX_KEY, JSON.stringify(filtered));
+  } catch (e) {
+    console.warn('Failed to cache local swap transaction:', e);
+  }
+}
+
+/**
+ * Update the status of a cached swap transaction (e.g., pending → confirmed).
+ */
+export function updateLocalSwapTransactionStatus(
+  txHash: string,
+  status: 'confirmed' | 'pending' | 'failed'
+): void {
+  try {
+    const existing: LocalSwapTxRecord[] = JSON.parse(localStorage.getItem(LOCAL_SWAP_TX_KEY) || '[]');
+    const updated = existing.map(r =>
+      r.txHash === txHash ? { ...r, status: status === 'failed' ? 'confirmed' : status } : r
+    );
+    localStorage.setItem(LOCAL_SWAP_TX_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Failed to update local swap transaction status:', e);
+  }
+}
+
+function getLocalSwapTransactions(safeAddress: `0x${string}`): SafeTransaction[] {
+  try {
+    const records: LocalSwapTxRecord[] = JSON.parse(localStorage.getItem(LOCAL_SWAP_TX_KEY) || '[]');
+    return records
+      .filter(r => r.safeAddress.toLowerCase() === safeAddress.toLowerCase())
+      .map(r => {
+        const amountIn = BigInt(r.amountIn);
+        const amountOut = BigInt(r.amountOut);
+        const feeAmount = BigInt(r.feeAmount);
+        return {
+          txHash: r.txHash,
+          type: 'swap' as const,
+          to: safeAddress, // swap stays within safe
+          from: safeAddress,
+          amount: amountIn,
+          token: r.tokenIn, // primary token for filtering
+          timestamp: r.timestamp,
+          status: r.status,
+          safe: safeAddress,
+          executionDate: r.status === 'confirmed' ? r.timestamp : undefined,
+          swapTokenIn: r.tokenIn,
+          swapTokenOut: r.tokenOut,
+          swapAmountIn: amountIn,
+          swapAmountOut: amountOut,
+          exchangeRate: r.exchangeRate,
+          protocolFee: feeAmount,
+          protocolFeeToken: r.tokenIn,
+        };
+      });
+  } catch {
+    return [];
   }
 }
 
@@ -749,6 +881,8 @@ export function getTransactionIcon(type: SafeTransaction['type']): string {
       return '↑';
     case 'receive':
       return '↓';
+    case 'swap':
+      return '⇄';
     case 'ownerChange':
       return '👤';
     case 'thresholdChange':
@@ -765,6 +899,8 @@ export function getTransactionTypeLabel(type: SafeTransaction['type']): string {
       return 'Sent';
     case 'receive':
       return 'Received';
+    case 'swap':
+      return 'Swapped';
     case 'ownerChange':
       return 'Signer Change';
     case 'thresholdChange':
