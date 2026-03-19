@@ -1,4 +1,4 @@
-import { walletClient, publicClient } from './relayer';
+import { publicClient, writeContractWithNonce } from './relayer';
 
 // SafeWebAuthnSignerFactory (CREATE2, same on all chains)
 const SIGNER_FACTORY = '0x1d31F259eE307358a26dFb23EB365939E8641195' as const;
@@ -55,7 +55,7 @@ export async function deploySignerProxy(x: bigint, y: bigint): Promise<`0x${stri
     return '0x' + '0'.repeat(64) as `0x${string}`;
   }
 
-  const hash = await walletClient.writeContract({
+  const hash = await writeContractWithNonce({
     address: SIGNER_FACTORY,
     abi: FACTORY_ABI,
     functionName: 'createSigner',
