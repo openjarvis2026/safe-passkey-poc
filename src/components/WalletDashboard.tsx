@@ -24,6 +24,7 @@ import {
 import { NATIVE_TOKEN, type Token, formatTokenAmount, formatUSDValue, getTokenBalances, type TokenBalance } from '../lib/tokens';
 import { type SafeTransaction } from '../lib/history';
 import { cacheGet } from '../lib/cache';
+import { isSwapSupported } from '../lib/chain';
 
 type View = 'home' | 'send' | 'receive' | 'add-owner' | 'history' | 'swap' | 'token-detail';
 
@@ -578,7 +579,8 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
       }}>
         {/* Convert */}
         <button
-          onClick={() => setView('swap')}
+          onClick={() => isSwapSupported(safe.chainId) ? setView('swap') : undefined}
+          title={!isSwapSupported(safe.chainId) ? 'Swaps are only available on mainnet' : undefined}
           style={{
             flex: 1,
             display: 'flex',
@@ -587,9 +589,10 @@ export default function WalletDashboard({ safe, onDisconnect, onSafeChanged }: P
             gap: 4,
             background: 'none',
             border: 'none',
-            cursor: 'pointer',
+            cursor: isSwapSupported(safe.chainId) ? 'pointer' : 'not-allowed',
             padding: 'var(--spacing-xs) 0',
-            color: 'var(--text-muted)',
+            color: isSwapSupported(safe.chainId) ? 'var(--text-muted)' : 'var(--text-disabled, rgba(255,255,255,0.25))',
+            opacity: isSwapSupported(safe.chainId) ? 1 : 0.5,
             transition: 'color 0.2s ease',
           }}
         >
