@@ -1,17 +1,34 @@
 import { encodeFunctionData, parseUnits, formatUnits, type Hex } from 'viem';
 import { publicClient } from './relayer';
 import { relayerAccount } from './relayer';
+import { CHAIN_ID } from './chain';
 import { type Token, NATIVE_TOKEN, TOKENS } from './tokens';
 
-// Uniswap V3 Contract Addresses
-// Note: Base Sepolia doesn't have official Uniswap V3 deployment
-// Using mainnet Base addresses for reference (would need deployment on testnet)
+// Base Mainnet chain ID
+const BASE_MAINNET_CHAIN_ID = 8453;
+
+// Uniswap V3 Contract Addresses (Base Mainnet)
 const UNISWAP_V3_ADDRESSES = {
-  // These are mainnet Base addresses - for production use
   QUOTER: '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a' as `0x${string}`,
   SWAP_ROUTER02: '0x2626664c2603336E57B271c5C0b26F421741e481' as `0x${string}`,
-  // For Base Sepolia testnet, these would need to be deployed or use alternative DEX
 } as const;
+
+// WETH address — same on Base Mainnet and Base Sepolia (OP stack predeploy)
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006' as `0x${string}`;
+
+/**
+ * Returns true when the configured chain has Uniswap V3 deployed.
+ * Base Mainnet (8453) is the canonical target; a local fork configured with
+ * the same chain ID is also supported (AC-SWP-007.3).
+ */
+function isUniswapChain(): boolean {
+  return CHAIN_ID === BASE_MAINNET_CHAIN_ID;
+}
+
+/** Maps the native ETH sentinel address to WETH for Uniswap Quoter calls. */
+function toUniswapAddress(token: Token): `0x${string}` {
+  return token.address === NATIVE_TOKEN.address ? WETH_ADDRESS : token.address;
+}
 
 // MultiSend contract address (Base Sepolia)
 const MULTISEND_ADDRESS = '0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526' as `0x${string}`;
@@ -20,26 +37,35 @@ const MULTISEND_ADDRESS = '0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526' as `0x${s
 const PROTOCOL_FEE_BPS = 50; // 0.5% = 50 basis points
 const TREASURY_ADDRESS = relayerAccount.address; // Using relayer as treasury for now
 
-// Quoter ABI (for getting swap quotes)
+// QuoterV2 ABI — struct-based input (0x3d4e44Eb on Base Mainnet).
+// stateMutability is declared as 'view' so viem's readContract can call it
+// via eth_call; the on-chain function is nonpayable but eth_call never
+// commits state so this is safe.
 const QUOTER_ABI = [
   {
     name: 'quoteExactInputSingle',
     type: 'function',
-    stateMutability: 'nonpayable',
+    stateMutability: 'view',
     inputs: [
-      { name: 'tokenIn', type: 'address' },
-      { name: 'tokenOut', type: 'address' },
-      { name: 'fee', type: 'uint24' },
-      { name: 'amountIn', type: 'uint256' },
-      { name: 'sqrtPriceLimitX96', type: 'uint160' }
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'tokenIn', type: 'address' },
+          { name: 'tokenOut', type: 'address' },
+          { name: 'amountIn', type: 'uint256' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'sqrtPriceLimitX96', type: 'uint160' },
+        ],
+      },
     ],
     outputs: [
       { name: 'amountOut', type: 'uint256' },
       { name: 'sqrtPriceX96After', type: 'uint160' },
       { name: 'initializedTicksCrossed', type: 'uint32' },
-      { name: 'gasEstimate', type: 'uint256' }
-    ]
-  }
+      { name: 'gasEstimate', type: 'uint256' },
+    ],
+  },
 ] as const;
 
 // SwapRouter02 ABI (for executing swaps)
@@ -121,27 +147,109 @@ export interface SwapParams {
 }
 
 /**
- * Get a swap quote from Uniswap V3 Quoter
+ * Fetch a real-time quote from the Uniswap V3 QuoterV2 on Base Mainnet.
+ * Tries the three most common fee tiers (3000, 500, 10000) in parallel and
+ * returns the one that yields the highest output amount.
+ * Throws when no pool has liquidity for the pair.
+ */
+async function fetchQuoteFromContract(
+  tokenIn: Token,
+  tokenOut: Token,
+  amountAfterFee: bigint,
+): Promise<{ amountOut: bigint; gasEstimate: bigint }> {
+  const tokenInAddress = toUniswapAddress(tokenIn);
+  const tokenOutAddress = toUniswapAddress(tokenOut);
+
+  // Common Uniswap V3 fee tiers: 0.3%, 0.05%, 1%
+  const feeTiers = [3000, 500, 10000] as const;
+
+  const results = await Promise.allSettled(
+    feeTiers.map(fee =>
+      publicClient.readContract({
+        address: UNISWAP_V3_ADDRESSES.QUOTER,
+        abi: QUOTER_ABI,
+        functionName: 'quoteExactInputSingle',
+        args: [
+          {
+            tokenIn: tokenInAddress,
+            tokenOut: tokenOutAddress,
+            amountIn: amountAfterFee,
+            fee,
+            sqrtPriceLimitX96: 0n,
+          },
+        ],
+      }),
+    ),
+  );
+
+  let bestAmountOut = 0n;
+  let bestGasEstimate = 0n;
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      const [amountOut, , , gasEstimate] = result.value as [bigint, bigint, number, bigint];
+      if (amountOut > bestAmountOut) {
+        bestAmountOut = amountOut;
+        bestGasEstimate = gasEstimate;
+      }
+    }
+  }
+
+  if (bestAmountOut === 0n) {
+    throw new Error('Insufficient liquidity for this token pair');
+  }
+
+  return { amountOut: bestAmountOut, gasEstimate: bestGasEstimate };
+}
+
+/**
+ * Get a swap quote.
+ *
+ * When the configured chain is Base Mainnet (chainId 8453), this calls the
+ * real Uniswap V3 QuoterV2 contract.  On any other chain (e.g. Base Sepolia)
+ * it falls back to a mock calculation so the UI still renders during
+ * development/testing.
+ *
+ * Returns null on irrecoverable errors; throws are surfaced to the caller as
+ * a null return so the UI can display an appropriate message.
  */
 export async function getSwapQuote(
   tokenIn: Token,
   tokenOut: Token,
-  amountIn: string
+  amountIn: string,
 ): Promise<SwapQuote | null> {
   try {
-    // Convert input amount to bigint
     const amountInWei = parseUnits(amountIn, tokenIn.decimals);
-    
+
     if (amountInWei === 0n) {
       throw new Error('Amount must be greater than 0');
     }
 
-    // Calculate fee amount (0.5% of input)
+    // Protocol fee: 0.5% of input amount (AC-SWP-004.1)
     const feeAmount = (amountInWei * BigInt(PROTOCOL_FEE_BPS)) / 10000n;
     const amountAfterFee = amountInWei - feeAmount;
 
-    // For demo purposes, return a mock quote since Base Sepolia doesn't have Uniswap V3
-    // In production, this would call the actual Quoter contract
+    if (isUniswapChain()) {
+      // Real quote from Uniswap V3 QuoterV2 (AC-SWP-003.1, AC-SWP-007.1)
+      const { amountOut, gasEstimate } = await fetchQuoteFromContract(
+        tokenIn,
+        tokenOut,
+        amountAfterFee,
+      );
+
+      return {
+        tokenIn,
+        tokenOut,
+        amountIn: amountInWei,
+        amountOut,
+        amountAfterFee,
+        feeAmount,
+        priceImpact: calculatePriceImpact(amountInWei, amountOut, tokenIn, tokenOut),
+        gasEstimate,
+      };
+    }
+
+    // Fallback: mock quote for Base Sepolia / local dev without Uniswap
     const mockAmountOut = calculateMockAmountOut(tokenIn, tokenOut, amountAfterFee);
 
     return {
@@ -151,40 +259,12 @@ export async function getSwapQuote(
       amountOut: mockAmountOut,
       amountAfterFee,
       feeAmount,
-      priceImpact: 0.1, // Mock 0.1% price impact
-      gasEstimate: 150000n // Mock gas estimate
+      priceImpact: 0.1,
+      gasEstimate: 150000n,
     };
-
-    // Uncomment this when using actual Uniswap V3 contracts:
-    /*
-    const result = await publicClient.readContract({
-      address: UNISWAP_V3_ADDRESSES.QUOTER,
-      abi: QUOTER_ABI,
-      functionName: 'quoteExactInputSingle',
-      args: [
-        tokenIn.address === NATIVE_TOKEN.address ? TOKENS.find(t => t.symbol === 'WETH')!.address : tokenIn.address,
-        tokenOut.address === NATIVE_TOKEN.address ? TOKENS.find(t => t.symbol === 'WETH')!.address : tokenOut.address,
-        3000, // 0.3% fee tier (most common)
-        amountAfterFee,
-        0n // No price limit
-      ]
-    });
-
-    return {
-      tokenIn,
-      tokenOut,
-      amountIn: amountInWei,
-      amountOut: result[0],
-      amountAfterFee,
-      feeAmount,
-      priceImpact: calculatePriceImpact(amountInWei, result[0], tokenIn, tokenOut),
-      gasEstimate: result[3]
-    };
-    */
-
   } catch (error) {
     console.error('Error getting swap quote:', error);
-    return null;
+    throw error; // Re-throw so callers can distinguish null-input from failures
   }
 }
 

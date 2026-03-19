@@ -28,6 +28,7 @@ export default function SwapView({ safe, onBack }: Props) {
   const [amountIn, setAmountIn] = useState('');
   const [quote, setQuote] = useState<SwapQuote | null>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [showFromSelector, setShowFromSelector] = useState(false);
   const [showToSelector, setShowToSelector] = useState(false);
   const [swapStatus, setSwapStatus] = useState('');
@@ -50,17 +51,20 @@ export default function SwapView({ safe, onBack }: Props) {
   useEffect(() => {
     if (!amountIn || parseFloat(amountIn) <= 0 || tokenFrom.address === tokenTo.address) {
       setQuote(null);
+      setQuoteError(null);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsLoadingQuote(true);
+      setQuoteError(null);
       try {
         const newQuote = await getSwapQuote(tokenFrom, tokenTo, amountIn);
         setQuote(newQuote);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching quote:', error);
         setQuote(null);
+        setQuoteError(error?.message || 'Unable to fetch quote. Try a different amount or token pair.');
       } finally {
         setIsLoadingQuote(false);
       }
@@ -75,6 +79,7 @@ export default function SwapView({ safe, onBack }: Props) {
     setTokenTo(temp);
     setAmountIn('');
     setQuote(null);
+    setQuoteError(null);
   };
 
   const extractClientDataFields = (clientDataJSON: string, challengeOffset: number): string => {
@@ -142,6 +147,7 @@ export default function SwapView({ safe, onBack }: Props) {
   const resetSwap = () => {
     setAmountIn('');
     setQuote(null);
+    setQuoteError(null);
     setSwapStatus('');
     setTxHash('');
     setShareUrl('');
@@ -180,7 +186,7 @@ export default function SwapView({ safe, onBack }: Props) {
   };
 
   const formattedQuote = quote ? formatSwapQuote(quote) : null;
-  const canSwap = quote && amountIn && parseFloat(amountIn) > 0 && !isLoadingQuote;
+  const canSwap = quote && amountIn && parseFloat(amountIn) > 0 && !isLoadingQuote && !quoteError;
 
   return (
     <div className="fade-in stack-lg" style={{ flex: 1, minHeight: 0 }}>
@@ -446,11 +452,11 @@ export default function SwapView({ safe, onBack }: Props) {
             <div style={{
               flex: 1,
               padding: 'var(--spacing-lg) var(--spacing-md)',
-              background: 'var(--card-bg-light)',
-              border: '1px solid var(--border)',
+              background: quoteError ? 'var(--error-bg, rgba(239,68,68,0.08))' : 'var(--card-bg-light)',
+              border: quoteError ? '1px solid var(--error, #ef4444)' : '1px solid var(--border)',
               borderRadius: 'var(--radius-lg)',
               textAlign: 'right',
-              fontSize: 20,
+              fontSize: quoteError ? 12 : 20,
               fontWeight: 600,
               minHeight: 56,
               display: 'flex',
@@ -459,6 +465,10 @@ export default function SwapView({ safe, onBack }: Props) {
             }}>
               {isLoadingQuote ? (
                 <div className="spinner-accent" style={{ width: 20, height: 20 }} />
+              ) : quoteError ? (
+                <span style={{ color: 'var(--error, #ef4444)', fontWeight: 500, textAlign: 'right' }}>
+                  ⚠️ {quoteError}
+                </span>
               ) : formattedQuote ? (
                 <span>{formatOutputAmount(formattedQuote.amountOut, tokenTo.symbol)}</span>
               ) : (
