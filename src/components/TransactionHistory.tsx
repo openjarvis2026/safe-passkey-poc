@@ -67,15 +67,30 @@ export default function TransactionHistory({ safeAddress, onBack, onResend }: Pr
   // Filter transactions by selected token
   const filteredTransactions = transactions.filter(tx => {
     if (selectedFilter === 'all') return true;
+    // For swap transactions, match either the input or output token
+    if (tx.type === 'swap') {
+      const inMatch = tx.swapTokenIn?.address.toLowerCase() === selectedFilter.toLowerCase();
+      const outMatch = tx.swapTokenOut?.address.toLowerCase() === selectedFilter.toLowerCase();
+      return inMatch || outMatch;
+    }
     return tx.token.address.toLowerCase() === selectedFilter.toLowerCase();
   });
-  
-  // Get unique tokens that have transactions
-  const tokensWithTransactions = Array.from(
-    new Set(transactions.map(tx => tx.token.address.toLowerCase()))
-  ).map(address => 
-    TOKENS.find(token => token.address.toLowerCase() === address) || 
-    transactions.find(tx => tx.token.address.toLowerCase() === address)?.token
+
+  // Get unique tokens that have transactions (include both sides of swaps)
+  const tokenAddressSet = new Set<string>();
+  transactions.forEach(tx => {
+    if (tx.type === 'swap') {
+      if (tx.swapTokenIn) tokenAddressSet.add(tx.swapTokenIn.address.toLowerCase());
+      if (tx.swapTokenOut) tokenAddressSet.add(tx.swapTokenOut.address.toLowerCase());
+    } else {
+      tokenAddressSet.add(tx.token.address.toLowerCase());
+    }
+  });
+  const tokensWithTransactions = Array.from(tokenAddressSet).map(address =>
+    TOKENS.find(token => token.address.toLowerCase() === address) ||
+    transactions.find(tx => tx.token.address.toLowerCase() === address)?.token ||
+    transactions.find(tx => tx.swapTokenIn?.address.toLowerCase() === address)?.swapTokenIn ||
+    transactions.find(tx => tx.swapTokenOut?.address.toLowerCase() === address)?.swapTokenOut
   ).filter((token): token is Token => token !== undefined);
   
   // Show filter chips only if there are multiple tokens

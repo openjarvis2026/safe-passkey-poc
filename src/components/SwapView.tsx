@@ -4,7 +4,7 @@ import { type Token, NATIVE_TOKEN, TOKENS, getTokenBalances, type TokenBalance }
 import { getSwapQuote, encodeSwapTransaction, formatSwapQuote, type SwapQuote } from '../lib/swap';
 import { getNonce, execTransaction } from '../lib/safe';
 import { EXPLORER } from '../lib/relayer';
-import { savePendingTransaction } from '../lib/history';
+import { savePendingTransaction, cacheLocalSwapTransaction } from '../lib/history';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { base64ToArrayBuffer } from '../lib/storage';
@@ -107,6 +107,23 @@ export default function SwapView({ safe, onBack }: Props) {
         const hash = await execTransaction(safe.address, swapTx.to, swapTx.value, swapTx.data, packed, 1);
         setTxHash(hash);
         setSwapStatus('Swap completed! ✅');
+
+        // Cache the completed swap in transaction history
+        if (quote) {
+          const formattedQuoteResult = formattedQuote;
+          const exchangeRateStr = formattedQuoteResult?.rate ?? `1 ${tokenFrom.symbol} = ? ${tokenTo.symbol}`;
+          cacheLocalSwapTransaction(
+            safe.address,
+            hash,
+            quote.tokenIn,
+            quote.tokenOut,
+            quote.amountIn,
+            quote.amountOut,
+            quote.feeAmount,
+            exchangeRateStr,
+            'confirmed'
+          );
+        }
       } else {
         const sigData = packSingleSignerData(sig.authenticatorData, clientDataFields, sig.r, sig.s);
         const shareable: ShareableTransaction = {
@@ -123,14 +140,33 @@ export default function SwapView({ safe, onBack }: Props) {
         const encoded = encodeShareableTransaction(shareable);
         const url = `${window.location.origin}${window.location.pathname}#/sign?data=${encoded}`;
         setShareUrl(url);
+        const pendingId = `${safe.address}-${nonce}-${Date.now()}`;
         savePendingTransaction(safe.address, {
-          id: `${safe.address}-${nonce}-${Date.now()}`,
+          id: pendingId,
           to: swapTx.to, value: swapTx.value.toString(), data: swapTx.data,
           token: tokenFrom,
           nonce: nonce.toString(),
           createdAt: new Date().toISOString(),
           threshold, signatureCount: 1, shareUrl: url,
         });
+
+        // Cache the pending swap in transaction history
+        if (quote) {
+          const formattedQuoteResult = formattedQuote;
+          const exchangeRateStr = formattedQuoteResult?.rate ?? `1 ${tokenFrom.symbol} = ? ${tokenTo.symbol}`;
+          cacheLocalSwapTransaction(
+            safe.address,
+            pendingId,
+            quote.tokenIn,
+            quote.tokenOut,
+            quote.amountIn,
+            quote.amountOut,
+            quote.feeAmount,
+            exchangeRateStr,
+            'pending'
+          );
+        }
+
         setSwapStatus(`Swap signed (1/${threshold}). Share with other devices.`);
       }
     } catch (error: any) {
