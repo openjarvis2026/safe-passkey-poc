@@ -5,6 +5,7 @@ import { getSwapQuote, encodeSwapTransaction, formatSwapQuote, type SwapQuote } 
 import { getNonce, execTransaction } from '../lib/safe';
 import { EXPLORER } from '../lib/relayer';
 import { savePendingTransaction, cacheLocalSwapTransaction } from '../lib/history';
+import { isSwapSupported } from '../lib/chain';
 import { computeSafeTxHash, packSafeSignature } from '../lib/encoding';
 import { signWithPasskey } from '../lib/webauthn';
 import { base64ToArrayBuffer } from '../lib/storage';
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function SwapView({ safe, onBack }: Props) {
+  const swapSupported = isSwapSupported(safe.chainId);
   const [tokenFrom, setTokenFrom] = useState<Token>(NATIVE_TOKEN);
   const [tokenTo, setTokenTo] = useState<Token>(TOKENS.find(t => t.symbol === 'USDC') || TOKENS[1]);
   const [amountIn, setAmountIn] = useState('');
@@ -216,7 +218,7 @@ export default function SwapView({ safe, onBack }: Props) {
   };
 
   const formattedQuote = quote ? formatSwapQuote(quote) : null;
-  const canSwap = quote && amountIn && parseFloat(amountIn) > 0 && !isLoadingQuote;
+  const canSwap = swapSupported && quote && amountIn && parseFloat(amountIn) > 0 && !isLoadingQuote;
 
   return (
     <div className="fade-in stack-lg" style={{ flex: 1, minHeight: 0 }}>
@@ -247,6 +249,28 @@ export default function SwapView({ safe, onBack }: Props) {
           </svg>
         </button>
       </div>
+
+      {/* Unsupported Chain Banner */}
+      {!swapSupported && (
+        <div className="card fade-in" style={{
+          background: 'rgba(255, 170, 0, 0.1)',
+          border: '1px solid rgba(255, 170, 0, 0.4)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 'var(--spacing-md)',
+          padding: 'var(--spacing-lg)',
+        }}>
+          <span style={{ fontSize: 20, lineHeight: 1 }}>⚠️</span>
+          <div className="stack-sm">
+            <p className="text-small" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+              Swaps are only available on mainnet.
+            </p>
+            <p className="text-xs text-secondary">
+              Connect to Base Mainnet to use the swap feature.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Settings Modal */}
       {showSettings && (
