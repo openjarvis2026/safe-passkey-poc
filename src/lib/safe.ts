@@ -1,5 +1,5 @@
 import { encodeFunctionData, type Hex } from 'viem';
-import { walletClient, publicClient } from './relayer';
+import { publicClient, writeContractWithNonce } from './relayer';
 
 // Safe deployment addresses (v1.4.1, Base Sepolia)
 const SAFE_SINGLETON = '0x41675C099F32341bf84BFc5382aF534df5C7461a' as const;
@@ -128,7 +128,7 @@ export async function deploySafe(signerAddress: `0x${string}`): Promise<{ txHash
 
   const saltNonce = BigInt(Date.now());
 
-  const txHash = await walletClient.writeContract({
+  const txHash = await writeContractWithNonce({
     address: SAFE_PROXY_FACTORY,
     abi: PROXY_FACTORY_ABI,
     functionName: 'createProxyWithNonce',
@@ -172,7 +172,7 @@ export async function execTransaction(
 ): Promise<`0x${string}`> {
   const ZERO = '0x0000000000000000000000000000000000000000' as const;
 
-  const txHash = await walletClient.writeContract({
+  const txHash = await writeContractWithNonce({
     address: safeAddress,
     abi: SAFE_ABI,
     functionName: 'execTransaction',
