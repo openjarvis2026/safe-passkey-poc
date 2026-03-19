@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { type SavedSafe } from '../lib/storage';
 import { type Token, NATIVE_TOKEN, TOKENS, getTokenBalances, type TokenBalance } from '../lib/tokens';
-import { getSwapQuote, encodeSwapTransaction, formatSwapQuote, type SwapQuote } from '../lib/swap';
+import { encodeSwapTransaction, formatSwapQuote } from '../lib/swap';
+import { useSwapQuote } from '../lib/useSwapQuote';
 import { getNonce, execTransaction } from '../lib/safe';
 import { EXPLORER } from '../lib/relayer';
 import { savePendingTransaction, cacheLocalSwapTransaction } from '../lib/history';
@@ -28,9 +29,6 @@ export default function SwapView({ safe, onBack }: Props) {
   const [tokenFrom, setTokenFrom] = useState<Token>(NATIVE_TOKEN);
   const [tokenTo, setTokenTo] = useState<Token>(TOKENS.find(t => t.symbol === 'USDC') || TOKENS[1]);
   const [amountIn, setAmountIn] = useState('');
-  const [quote, setQuote] = useState<SwapQuote | null>(null);
-  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
-  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [showFromSelector, setShowFromSelector] = useState(false);
   const [showToSelector, setShowToSelector] = useState(false);
   const [swapStatus, setSwapStatus] = useState('');
@@ -49,39 +47,20 @@ export default function SwapView({ safe, onBack }: Props) {
   const localCredentialId = localOwner?.credentialId ? base64ToArrayBuffer(localOwner.credentialId) : null;
   const threshold = safe.threshold;
 
-  // Debounced quote fetching
-  useEffect(() => {
-    if (!amountIn || parseFloat(amountIn) <= 0 || tokenFrom.address === tokenTo.address) {
-      setQuote(null);
-      setQuoteError(null);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setIsLoadingQuote(true);
-      setQuoteError(null);
-      try {
-        const newQuote = await getSwapQuote(tokenFrom, tokenTo, amountIn);
-        setQuote(newQuote);
-      } catch (error: any) {
-        console.error('Error fetching quote:', error);
-        setQuote(null);
-        setQuoteError(error?.message || 'Unable to fetch quote. Try a different amount or token pair.');
-      } finally {
-        setIsLoadingQuote(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [amountIn, tokenFrom, tokenTo]);
+  // Real-time quote management: debounce + 10 s polling + 30 s expiry
+  const {
+    quote,
+    isLoading: isLoadingQuote,
+    error: quoteError,
+    isStale: isQuoteStale,
+    refetch: refetchQuote,
+  } = useSwapQuote(tokenFrom, tokenTo, amountIn);
 
   const handleSwapTokens = () => {
     const temp = tokenFrom;
     setTokenFrom(tokenTo);
     setTokenTo(temp);
     setAmountIn('');
-    setQuote(null);
-    setQuoteError(null);
   };
 
   const extractClientDataFields = (clientDataJSON: string, challengeOffset: number): string => {
@@ -91,13 +70,25 @@ export default function SwapView({ safe, onBack }: Props) {
 
   const handleSwap = async () => {
     if (!localCredentialId || !localOwner || !quote) return;
-    
+
     setSwapStatus('Preparing swap...');
     setTxHash('');
     setShareUrl('');
 
     try {
-      const swapTx = encodeSwapTransaction(safe.address, quote, slippage);
+      // If the displayed quote is stale, fetch a fresh one before building the tx
+      let activeQuote = quote;
+      if (isQuoteStale) {
+        setSwapStatus('Refreshing quote...');
+        const freshQuote = await refetchQuote();
+        if (!freshQuote) {
+          setSwapStatus('Error: Could not refresh quote. Please try again.');
+          return;
+        }
+        activeQuote = freshQuote;
+      }
+
+      const swapTx = encodeSwapTransaction(safe.address, activeQuote, slippage);
       setSwapStatus('Signing transaction...');
       
       const nonce = await getNonce(safe.address);
@@ -116,21 +107,19 @@ export default function SwapView({ safe, onBack }: Props) {
         setSwapStatus('Swap completed! ✅');
 
         // Cache the completed swap in transaction history
-        if (quote) {
-          const formattedQuoteResult = formattedQuote;
-          const exchangeRateStr = formattedQuoteResult?.rate ?? `1 ${tokenFrom.symbol} = ? ${tokenTo.symbol}`;
-          cacheLocalSwapTransaction(
-            safe.address,
-            hash,
-            quote.tokenIn,
-            quote.tokenOut,
-            quote.amountIn,
-            quote.amountOut,
-            quote.feeAmount,
-            exchangeRateStr,
-            'confirmed'
-          );
-        }
+        const activeFormattedQuote = formatSwapQuote(activeQuote);
+        const confirmedRateStr = activeFormattedQuote.rate ?? `1 ${tokenFrom.symbol} = ? ${tokenTo.symbol}`;
+        cacheLocalSwapTransaction(
+          safe.address,
+          hash,
+          activeQuote.tokenIn,
+          activeQuote.tokenOut,
+          activeQuote.amountIn,
+          activeQuote.amountOut,
+          activeQuote.feeAmount,
+          confirmedRateStr,
+          'confirmed'
+        );
       } else {
         const sigData = packSingleSignerData(sig.authenticatorData, clientDataFields, sig.r, sig.s);
         const shareable: ShareableTransaction = {
@@ -158,21 +147,19 @@ export default function SwapView({ safe, onBack }: Props) {
         });
 
         // Cache the pending swap in transaction history
-        if (quote) {
-          const formattedQuoteResult = formattedQuote;
-          const exchangeRateStr = formattedQuoteResult?.rate ?? `1 ${tokenFrom.symbol} = ? ${tokenTo.symbol}`;
-          cacheLocalSwapTransaction(
-            safe.address,
-            pendingId,
-            quote.tokenIn,
-            quote.tokenOut,
-            quote.amountIn,
-            quote.amountOut,
-            quote.feeAmount,
-            exchangeRateStr,
-            'pending'
-          );
-        }
+        const pendingFormattedQuote = formatSwapQuote(activeQuote);
+        const pendingRateStr = pendingFormattedQuote.rate ?? `1 ${tokenFrom.symbol} = ? ${tokenTo.symbol}`;
+        cacheLocalSwapTransaction(
+          safe.address,
+          pendingId,
+          activeQuote.tokenIn,
+          activeQuote.tokenOut,
+          activeQuote.amountIn,
+          activeQuote.amountOut,
+          activeQuote.feeAmount,
+          pendingRateStr,
+          'pending'
+        );
 
         setSwapStatus(`Swap signed (1/${threshold}). Share with other devices.`);
       }
@@ -184,8 +171,6 @@ export default function SwapView({ safe, onBack }: Props) {
 
   const resetSwap = () => {
     setAmountIn('');
-    setQuote(null);
-    setQuoteError(null);
     setSwapStatus('');
     setTxHash('');
     setShareUrl('');
@@ -540,12 +525,33 @@ export default function SwapView({ safe, onBack }: Props) {
 
         {/* Quote Details */}
         {formattedQuote && (
-          <div className="card-light fade-in" style={{ 
+          <div className="card-light fade-in" style={{
             marginTop: 'var(--spacing-lg)',
             padding: 'var(--spacing-md)',
             background: 'var(--bg-secondary)',
           }}>
             <div className="stack-sm">
+              {/* Stale quote warning */}
+              {isQuoteStale && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--spacing-xs)',
+                  padding: '4px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(255, 170, 0, 0.12)',
+                  border: '1px solid rgba(255, 170, 0, 0.35)',
+                }}>
+                  <span style={{ fontSize: 12 }}>⚠️</span>
+                  <span className="text-xs" style={{ color: '#f59e0b' }}>
+                    Quote is refreshing…
+                  </span>
+                  {isLoadingQuote && (
+                    <div className="spinner-accent" style={{ width: 12, height: 12, marginLeft: 'auto' }} />
+                  )}
+                </div>
+              )}
+
               <div className="flex-between">
                 <span className="text-xs text-secondary">Exchange Rate</span>
                 <span className="text-xs" style={{ fontWeight: 500 }}>{formattedQuote.rate}</span>
