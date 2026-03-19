@@ -56,3 +56,15 @@ export const chain: Chain = useCustomChain
 export const CHAIN_ID = chain.id;
 export const CHAIN_ID_BIGINT = BigInt(chain.id);
 export const EXPLORER = envExplorerUrl ?? 'https://sepolia.basescan.org';
+
+/** Chain IDs where token swaps are supported (Uniswap V3 deployed). */
+export const BASE_MAINNET_CHAIN_ID = 8453;
+export const SWAP_SUPPORTED_CHAIN_IDS: number[] = [BASE_MAINNET_CHAIN_ID];
+
+/**
+ * Returns true if the given chainId supports the swap feature.
+ * Swaps require Uniswap V3 contracts which are only available on mainnet chains.
+ */
+export function isSwapSupported(chainId: number): boolean {
+  return SWAP_SUPPORTED_CHAIN_IDS.includes(chainId);
+}
